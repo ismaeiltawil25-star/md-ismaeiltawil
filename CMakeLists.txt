@@ -24,6 +24,7 @@ add_library(md_backpack_core STATIC
     src/services/MarkdownPreprocessor.cpp
     src/renderers/MarkdownHtmlRenderer.h
     src/renderers/MarkdownHtmlRenderer.cpp
+    src/renderers/RenderPipelineStage.h
     src/renderers/HtmlElementWrapper.h
     src/renderers/HtmlElementWrapper.cpp
     src/renderers/HtmlNormalizer.h

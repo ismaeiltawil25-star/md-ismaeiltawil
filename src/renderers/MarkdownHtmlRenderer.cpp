@@ -33,16 +33,28 @@ MarkdownHtmlRenderer::Result MarkdownHtmlRenderer::render(const QString &markdow
         QString errMsg = QString("md4c HTML rendering failed with code %1").arg(ret);
         ErrorLogger::instance().logError("MarkdownHtmlRenderer", errMsg);
         result.errorMessage = errMsg;
+        result.diagnostics.append({RenderStage::Md4c, false, errMsg});
         return result;
     }
+    result.diagnostics.append({RenderStage::Md4c, true, {}});
 
-    // Apply processing steps in sequence (each step is a separate unit)
     QString blockquoteWrapped = HtmlElementWrapper::wrapBlockquotes(html);
+    result.diagnostics.append({RenderStage::BlockquoteWrap, true, {}});
+
     QString codeBlockWrapped = HtmlElementWrapper::wrapCodeBlocks(blockquoteWrapped);
+    result.diagnostics.append({RenderStage::CodeBlockWrap, true, {}});
+
     QString rawNormalized = HtmlNormalizer::normalizeRawTags(codeBlockWrapped);
+    result.diagnostics.append({RenderStage::HtmlNormalize, true, {}});
+
     QString rtlApplied = HtmlRtlProcessor::applyRtl(rawNormalized);
+    result.diagnostics.append({RenderStage::RtlProcessing, true, {}});
+
     QString rtlBlockquoteFixed = HtmlElementWrapper::swapBlockquoteOrderForRtl(rtlApplied);
+    result.diagnostics.append({RenderStage::RtlBlockquoteOrder, true, {}});
+
     result.html = TaskListNormalizer::normalizeTaskLists(rtlBlockquoteFixed);
+    result.diagnostics.append({RenderStage::TaskListNormalize, true, {}});
     return result;
 }
 

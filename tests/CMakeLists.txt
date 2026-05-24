@@ -64,6 +64,8 @@ target_link_libraries(DocumentTabPageTest PRIVATE
 )
 add_test(NAME DocumentTabPageTest COMMAND DocumentTabPageTest)
 
+add_unit_test(RenderPipelineContractTest unit/RenderPipelineContractTest.cpp)
+
 add_executable(DocumentOpenPipelineTest
     unit/DocumentOpenPipelineTest.cpp
     ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp

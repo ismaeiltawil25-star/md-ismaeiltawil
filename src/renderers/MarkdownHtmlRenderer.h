@@ -2,7 +2,16 @@
 #define MARKDOWNHTMLRENDERER_H
 
 #include <QString>
+#include <QList>
 #include "models/MarkdownDocument.h"
+#include "renderers/RenderPipelineStage.h"
+
+struct StageDiagnostic
+{
+    RenderStage stage;
+    bool success = true;
+    QString warning;
+};
 
 class MarkdownHtmlRenderer
 {
@@ -11,6 +20,7 @@ public:
     {
         QString html;
         QString errorMessage;
+        QList<StageDiagnostic> diagnostics;
 
         bool isValid() const { return errorMessage.isEmpty(); }
     };
