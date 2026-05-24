@@ -1,0 +1,32 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-2022
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Qt 6.7
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.0'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64'
+          modules: 'qt5compat qtnetworkauth'
+
+      - name: Configure CMake
+        run: cmake -B build -S . -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}"
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Run Tests
+        run: ctest --test-dir build -C Release --output-on-failure

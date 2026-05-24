@@ -1,0 +1,49 @@
+# Build directories
+build/
+out/
+
+# Deployment artifacts
+dist/
+
+# IDE / editor
+.vs/
+.vscode/
+*.user
+*.suo
+.idea/
+*.swp
+*.swo
+
+# Compiled
+*.o
+*.obj
+*.exe
+*.dll
+*.lib
+*.so
+*.dylib
+
+# Qt
+moc_*.cpp
+*.pro.user
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+ninja.build
+
+# Build/test output files
+err.txt
+out.txt
+stderr.txt
+stdout.txt
+test_result.xml
+
+# Local installer/log artifacts
+aqtinstall.log
+
+# OS
+Thumbs.db
+.DS_Store

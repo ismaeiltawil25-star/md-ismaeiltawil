@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="md-backpack-reader.ico">../../../assets/icons/md-backpack-reader.ico</file>
+    </qresource>
+</RCC>
