@@ -12,6 +12,9 @@ private slots:
     void testDetailsStripped();
     void testDivToTable();
     void testSubSupPreserved();
+    void testKbdWithAttribute();
+    void testMarkWithAttribute();
+    void testSummaryWithAttribute();
 };
 
 void HtmlNormalizerTest::testKbdToCode()
@@ -61,6 +64,30 @@ void HtmlNormalizerTest::testSubSupPreserved()
     QString result = HtmlNormalizer::normalizeRawTags(input);
     QVERIFY2(result.contains("<sub>"), "<sub> must survive");
     QVERIFY2(result.contains("<sup>"), "<sup> must survive");
+}
+
+void HtmlNormalizerTest::testKbdWithAttribute()
+{
+    QString input = "<kbd class=\"custom\">Ctrl</kbd>";
+    QString result = HtmlNormalizer::normalizeRawTags(input);
+    QVERIFY2(!result.contains("<kbd"), "kbd with attr must be replaced");
+    QVERIFY2(result.contains("<code>Ctrl</code>"), "kbd with attr must become code");
+}
+
+void HtmlNormalizerTest::testMarkWithAttribute()
+{
+    QString input = "<mark style=\"extra:true;\">text</mark>";
+    QString result = HtmlNormalizer::normalizeRawTags(input);
+    QVERIFY2(!result.contains("<mark"), "mark with attr must be replaced");
+    QVERIFY2(result.contains("background-color: #FFF3B0"), "mark with attr must produce amber style");
+}
+
+void HtmlNormalizerTest::testSummaryWithAttribute()
+{
+    QString input = "<summary class=\"custom\">Title</summary>";
+    QString result = HtmlNormalizer::normalizeRawTags(input);
+    QVERIFY2(!result.contains("<summary"), "summary with attr must be replaced");
+    QVERIFY2(result.contains("<p class=\"html-summary\">"), "summary with attr must become p.html-summary");
 }
 
 QTEST_MAIN(HtmlNormalizerTest)
