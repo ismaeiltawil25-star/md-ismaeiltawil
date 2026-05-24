@@ -46,6 +46,7 @@ private slots:
     void testTaskListCheckedLowercase();
     void testTaskListCheckedUppercase();
     void testTaskListNormalListItemUnchanged();
+    void testDiagnosticsTimingPresent();
 };
 
 void MarkdownHtmlRendererTest::testHeading()
@@ -458,6 +459,17 @@ void MarkdownHtmlRendererTest::testTaskListNormalListItemUnchanged()
     QVERIFY(result.isValid());
     QVERIFY2(!result.html.contains("task-list-item"), "normal item must not get task class");
     QVERIFY2(result.html.contains("Normal list item"), "normal item content preserved");
+}
+
+void MarkdownHtmlRendererTest::testDiagnosticsTimingPresent()
+{
+    auto result = MarkdownHtmlRenderer::render("# Hello\n");
+    QVERIFY(result.isValid());
+    QVERIFY(!result.diagnostics.isEmpty());
+    for (const auto &diag : result.diagnostics) {
+        QVERIFY2(diag.elapsedMs >= 0,
+                 "each diagnostic must have non-negative elapsedMs");
+    }
 }
 
 QTEST_MAIN(MarkdownHtmlRendererTest)

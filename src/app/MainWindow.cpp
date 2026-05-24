@@ -208,8 +208,18 @@ void MainWindow::openDocumentFromPath(const QString &path)
     }
 
     if (!result.renderWarning.isEmpty()) {
+        QString detail = result.renderWarning;
+        for (const auto &diag : result.diagnostics) {
+            if (!diag.success) {
+                detail += "\n\nStage: ";
+                detail += renderStageName(diag.stage);
+                detail += "\nError: ";
+                detail += diag.warning;
+                break;
+            }
+        }
         QMessageBox::warning(this, "Render Warning",
-            QString("Failed to render:\n%1").arg(path));
+            QString("Failed to render:\n%1\n\n%2").arg(path, detail));
     }
 
     if (m_zoomSteps != 0)

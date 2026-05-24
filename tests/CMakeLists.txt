@@ -64,6 +64,8 @@ target_link_libraries(DocumentTabPageTest PRIVATE
 )
 add_test(NAME DocumentTabPageTest COMMAND DocumentTabPageTest)
 
+add_unit_test(PerformanceMonitorTest unit/PerformanceMonitorTest.cpp)
+add_unit_test(ErrorLoggerTest unit/ErrorLoggerTest.cpp)
 add_unit_test(RenderPipelineContractTest unit/RenderPipelineContractTest.cpp)
 
 add_executable(DocumentOpenPipelineTest

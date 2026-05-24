@@ -22,6 +22,8 @@ public:
     };
 
     void report(const QString &name, qint64 elapsedMs);
+    qint64 lastTime(const QString &name) const;
+    void clear();
 
 private:
     PerformanceMonitor() = default;
@@ -31,6 +33,7 @@ private:
 
     QHash<QString, qint64> m_totalTimes;
     QHash<QString, int> m_callCounts;
+    QHash<QString, qint64> m_lastTimes;
 };
 
 #endif

@@ -8,7 +8,7 @@
 DocumentOpenPipeline::DocumentOpenPipeline(RenderFn renderFn)
     : m_renderFn(renderFn ? renderFn : [](const QString &md) -> PipelineRenderResult {
         auto r = MarkdownHtmlRenderer::render(md);
-        return { r.html, r.errorMessage };
+        return { r.html, r.errorMessage, r.diagnostics };
     })
 {
 }
@@ -35,10 +35,12 @@ DocumentOpenResult DocumentOpenPipeline::open(const QString &filePath)
     if (renderResult.isValid()) {
         result.tabState.contentMode = ContentMode::Html;
         result.tabState.originalHtml = renderResult.html;
+        result.diagnostics = renderResult.diagnostics;
     } else {
         result.tabState.contentMode = ContentMode::Plain;
         result.tabState.originalPlainText = cleaned;
         result.renderWarning = renderResult.errorMessage;
+        result.diagnostics = renderResult.diagnostics;
     }
 
     return result;

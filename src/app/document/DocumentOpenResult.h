@@ -2,8 +2,10 @@
 #define DOCUMENTOPENRESULT_H
 
 #include <QString>
+#include <QList>
 #include <QUrl>
 #include "DocumentTabState.h"
+#include "renderers/MarkdownHtmlRenderer.h"
 
 struct DocumentOpenResult
 {
@@ -11,6 +13,7 @@ struct DocumentOpenResult
     QString fileName;
     QString errorMessage;
     QString renderWarning;
+    QList<StageDiagnostic> diagnostics;
     QUrl baseUrl;
 
     bool isValid() const { return errorMessage.isEmpty(); }

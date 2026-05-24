@@ -15,6 +15,7 @@ private slots:
     void testBaseUrlPointsToFolder();
     void testRenderFailureFallsBackToPlainText();
     void testFileNameExtracted();
+    void testDiagnosticsPassThroughPipeline();
 };
 
 void DocumentOpenPipelineTest::testValidMarkdownReturnsHtml()
@@ -97,8 +98,24 @@ void DocumentOpenPipelineTest::testFileNameExtracted()
     const QString path = QString(TEST_DATA_DIR) + "/sample.md";
     DocumentOpenPipeline pipeline;
     auto result = pipeline.open(path);
-
     QCOMPARE(result.fileName, QString("sample.md"));
+}
+
+void DocumentOpenPipelineTest::testDiagnosticsPassThroughPipeline()
+{
+    const QString path = QString(TEST_DATA_DIR) + "/sample.md";
+    DocumentOpenPipeline pipeline;
+    auto result = pipeline.open(path);
+
+    QVERIFY(result.isValid());
+    QVERIFY(!result.diagnostics.isEmpty());
+    QCOMPARE(result.diagnostics.size(), 7);
+    // Verify each diagnostic has a valid stage enum value
+    QCOMPARE(result.diagnostics[0].stage, RenderStage::Md4c);
+    QCOMPARE(result.diagnostics[6].stage, RenderStage::TaskListNormalize);
+    // Timing must be non-negative
+    for (const auto &diag : result.diagnostics)
+        QVERIFY(diag.elapsedMs >= 0);
 }
 
 QTEST_MAIN(DocumentOpenPipelineTest)

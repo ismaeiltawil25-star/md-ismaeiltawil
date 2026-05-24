@@ -10,6 +10,7 @@ private slots:
     void testStageOrder();
     void testAllStagesReportSuccess();
     void testDiagnosticsCount();
+    void testDiagnosticsIncludeTiming();
 };
 
 void RenderPipelineContractTest::testStageOrder()
@@ -41,6 +42,17 @@ void RenderPipelineContractTest::testDiagnosticsCount()
     auto result = MarkdownHtmlRenderer::render("# Hello\n");
     QVERIFY(result.isValid());
     QCOMPARE(result.diagnostics.size(), 7);
+}
+
+void RenderPipelineContractTest::testDiagnosticsIncludeTiming()
+{
+    auto result = MarkdownHtmlRenderer::render("# Hello\n");
+    QVERIFY(result.isValid());
+    QCOMPARE(result.diagnostics.size(), 7);
+    for (const auto &diag : result.diagnostics) {
+        QVERIFY2(diag.elapsedMs >= 0,
+                 "every stage must record elapsedMs >= 0");
+    }
 }
 
 QTEST_MAIN(RenderPipelineContractTest)

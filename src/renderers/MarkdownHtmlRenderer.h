@@ -11,6 +11,7 @@ struct StageDiagnostic
     RenderStage stage;
     bool success = true;
     QString warning;
+    qint64 elapsedMs = 0;
 };
 
 class MarkdownHtmlRenderer
