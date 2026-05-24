@@ -42,3 +42,40 @@ target_link_libraries(ReaderAppearanceControllerTest PRIVATE
     md_backpack_appearance Qt6::Test
 )
 add_test(NAME ReaderAppearanceControllerTest COMMAND ReaderAppearanceControllerTest)
+
+add_executable(DocumentTabStateTest unit/DocumentTabStateTest.cpp)
+target_include_directories(DocumentTabStateTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+)
+target_link_libraries(DocumentTabStateTest PRIVATE
+    Qt6::Core Qt6::Test
+)
+add_test(NAME DocumentTabStateTest COMMAND DocumentTabStateTest)
+
+add_executable(DocumentTabPageTest
+    unit/DocumentTabPageTest.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp
+)
+target_include_directories(DocumentTabPageTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+)
+target_link_libraries(DocumentTabPageTest PRIVATE
+    Qt6::Widgets Qt6::Test
+)
+add_test(NAME DocumentTabPageTest COMMAND DocumentTabPageTest)
+
+add_executable(DocumentOpenPipelineTest
+    unit/DocumentOpenPipelineTest.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/document/DocumentOpenPipeline.cpp
+)
+target_compile_definitions(DocumentOpenPipelineTest PRIVATE
+    TEST_DATA_DIR="${TEST_DATA_DIR}"
+)
+target_include_directories(DocumentOpenPipelineTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+)
+target_link_libraries(DocumentOpenPipelineTest PRIVATE
+    md_backpack_core Qt6::Widgets Qt6::Test
+)
+add_test(NAME DocumentOpenPipelineTest COMMAND DocumentOpenPipelineTest)

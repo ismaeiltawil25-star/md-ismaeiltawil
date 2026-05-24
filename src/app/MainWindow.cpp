@@ -1,7 +1,5 @@
 #include "MainWindow.h"
-#include "services/DocumentLoader.h"
-#include "services/MarkdownPreprocessor.h"
-#include "renderers/MarkdownHtmlRenderer.h"
+#include "app/document/DocumentOpenPipeline.h"
 #include "app/appearance/ReaderAppearanceController.h"
 #include "app/appearance/ReaderAppearanceDialog.h"
 #include "app/appearance/ReaderStylesheetBuilder.h"
@@ -171,8 +169,9 @@ void MainWindow::openDocumentFromPath(const QString &path)
     QString absPath = QFileInfo(path).absoluteFilePath();
 
     for (int i = 0; i < m_tabWidget->count(); ++i) {
-        QWidget *page = m_tabWidget->widget(i);
-        QString tabPath = page->property("filePath").toString();
+        auto *tabPage = qobject_cast<DocumentTabPage *>(m_tabWidget->widget(i));
+        if (!tabPage) continue;
+        QString tabPath = tabPage->filePath();
         if (!tabPath.isEmpty() && QFileInfo(tabPath).absoluteFilePath() == absPath) {
             m_tabWidget->setCurrentIndex(i);
             statusBar()->showMessage(QString("Already open: %1").arg(path));
@@ -181,51 +180,42 @@ void MainWindow::openDocumentFromPath(const QString &path)
         }
     }
 
-    auto loadResult = DocumentLoader::load(path);
+    DocumentOpenPipeline pipeline;
+    auto result = pipeline.open(absPath);
 
-    if (!loadResult.isValid()) {
+    if (!result.isValid()) {
         QMessageBox::warning(this, "Error",
-            QString("Could not open:\n%1\n\n%2").arg(path, loadResult.errorMessage));
-        statusBar()->showMessage(loadResult.errorMessage);
+            QString("Could not open:\n%1\n\n%2").arg(path, result.errorMessage));
+        statusBar()->showMessage(result.errorMessage);
         return;
     }
 
-    QString cleaned = MarkdownPreprocessor::stripYamlFrontMatter(loadResult.document.rawText);
-    QString withDefinitions = MarkdownPreprocessor::convertDefinitionLists(cleaned);
-    auto renderResult = MarkdownHtmlRenderer::render(withDefinitions);
+    DocumentTabPage *tabPage = new DocumentTabPage(this);
+    tabPage->setTabState(result.tabState);
+    tabPage->setZoomSteps(0);
+    tabPage->setOpenLinks(false);
+    connect(tabPage, &QTextBrowser::anchorClicked,
+            this, &MainWindow::onAnchorClicked);
+    tabPage->document()->setBaseUrl(result.baseUrl);
+    applyReaderAppearanceToBrowser(tabPage);
 
-    if (!renderResult.isValid()) {
+    if (result.tabState.contentMode == ContentMode::Html) {
+        tabPage->setHtml(result.tabState.originalHtml);
+        statusBar()->showMessage(QString("Opened: %1").arg(path));
+    } else {
+        tabPage->setPlainText(result.tabState.originalPlainText);
+        statusBar()->showMessage(QString("Rendered with fallback: %1").arg(path));
+    }
+
+    if (!result.renderWarning.isEmpty()) {
         QMessageBox::warning(this, "Render Warning",
             QString("Failed to render:\n%1").arg(path));
     }
 
-    QTextBrowser *browser = new QTextBrowser(this);
-    browser->setProperty("filePath", absPath);
-    browser->setProperty("zoomSteps", 0);
-    browser->setOpenLinks(false);
-    connect(browser, &QTextBrowser::anchorClicked,
-            this, &MainWindow::onAnchorClicked);
-    applyReaderAppearanceToBrowser(browser);
-
-    QUrl baseUrl = QUrl::fromLocalFile(QFileInfo(absPath).absolutePath() + '/');
-    browser->document()->setBaseUrl(baseUrl);
-
-    if (renderResult.isValid()) {
-        browser->setProperty("contentMode", "html");
-        browser->setProperty("originalHtml", renderResult.html);
-        browser->setHtml(renderResult.html);
-        statusBar()->showMessage(QString("Opened: %1").arg(path));
-    } else {
-        browser->setProperty("contentMode", "plain");
-        browser->setProperty("originalPlainText", cleaned);
-        browser->setPlainText(cleaned);
-        statusBar()->showMessage(QString("Rendered with fallback: %1").arg(path));
-    }
-
     if (m_zoomSteps != 0)
-        syncBrowserZoom(browser);
+        syncBrowserZoom(tabPage);
 
-    int index = m_tabWidget->addTab(browser, loadResult.document.fileName);
+    int index = m_tabWidget->addTab(tabPage, result.fileName);
     m_tabWidget->setTabToolTip(index, path);
     m_tabWidget->setCurrentIndex(index);
 
@@ -234,25 +224,25 @@ void MainWindow::openDocumentFromPath(const QString &path)
     updateEmptyState();
 }
 
-void MainWindow::syncBrowserZoom(QTextBrowser *browser) const
+void MainWindow::syncBrowserZoom(DocumentTabPage *tabPage) const
 {
-    if (!browser)
+    if (!tabPage)
         return;
-    int current = browser->property("zoomSteps").toInt();
+    int current = tabPage->zoomSteps();
     int delta = m_zoomSteps - current;
     if (delta > 0)
-        browser->zoomIn(delta);
+        tabPage->zoomIn(delta);
     else if (delta < 0)
-        browser->zoomOut(-delta);
-    browser->setProperty("zoomSteps", m_zoomSteps);
+        tabPage->zoomOut(-delta);
+    tabPage->setZoomSteps(m_zoomSteps);
 }
 
 void MainWindow::applyGlobalZoomToAllBrowsers()
 {
     for (int i = 0; i < m_tabWidget->count(); ++i) {
-        auto *browser = qobject_cast<QTextBrowser *>(m_tabWidget->widget(i));
-        if (browser)
-            syncBrowserZoom(browser);
+        auto *tabPage = qobject_cast<DocumentTabPage *>(m_tabWidget->widget(i));
+        if (tabPage)
+            syncBrowserZoom(tabPage);
     }
 }
 
@@ -358,45 +348,44 @@ void MainWindow::clearRecentFiles()
     updateRecentFilesMenu();
 }
 
-void MainWindow::applyReaderAppearanceToBrowser(QTextBrowser *browser) const
+void MainWindow::applyReaderAppearanceToBrowser(DocumentTabPage *tabPage) const
 {
-    if (!browser)
+    if (!tabPage)
         return;
     const auto &settings = m_appearanceController->settings();
-    browser->setStyleSheet(ReaderStylesheetBuilder::buildWidgetStylesheet(settings));
-    browser->document()->setDefaultStyleSheet(
+    tabPage->setStyleSheet(ReaderStylesheetBuilder::buildWidgetStylesheet(settings));
+    tabPage->document()->setDefaultStyleSheet(
         ReaderStylesheetBuilder::buildDocumentStylesheet(settings));
 
-    QString filePath = browser->property("filePath").toString();
+    QString filePath = tabPage->filePath();
     if (!filePath.isEmpty())
-        browser->document()->setBaseUrl(
+        tabPage->document()->setBaseUrl(
             QUrl::fromLocalFile(QFileInfo(filePath).absolutePath() + '/'));
 
-    QString mode = browser->property("contentMode").toString();
-    if (mode == QStringLiteral("html")) {
-        QString html = browser->property("originalHtml").toString();
+    if (tabPage->contentMode() == ContentMode::Html) {
+        QString html = tabPage->originalHtml();
         if (html.isEmpty())
             return;
-        auto *scrollBar = browser->verticalScrollBar();
+        auto *scrollBar = tabPage->verticalScrollBar();
         int scrollPos = scrollBar ? scrollBar->value() : 0;
-        auto cursor = browser->textCursor();
+        auto cursor = tabPage->textCursor();
         int cursorPos = cursor.position();
 
-        browser->setHtml(html);
+        tabPage->setHtml(html);
 
         if (scrollBar)
             scrollBar->setValue(scrollPos);
         cursor.setPosition(cursorPos);
-        browser->setTextCursor(cursor);
+        tabPage->setTextCursor(cursor);
     }
 }
 
 void MainWindow::applyReaderAppearanceToAllBrowsers()
 {
     for (int i = 0; i < m_tabWidget->count(); ++i) {
-        auto *browser = qobject_cast<QTextBrowser *>(m_tabWidget->widget(i));
-        if (browser)
-            applyReaderAppearanceToBrowser(browser);
+        auto *tabPage = qobject_cast<DocumentTabPage *>(m_tabWidget->widget(i));
+        if (tabPage)
+            applyReaderAppearanceToBrowser(tabPage);
     }
 }
 
@@ -441,7 +430,9 @@ void MainWindow::updateStatusBarForTab(int index)
     if (!page)
         return;
 
-    QString path = page->property("filePath").toString();
+    auto *tabPage = qobject_cast<DocumentTabPage *>(page);
+    if (!tabPage) return;
+    QString path = tabPage->filePath();
     if (!path.isEmpty()) {
         statusBar()->showMessage(QString("Opened: %1").arg(path));
     }

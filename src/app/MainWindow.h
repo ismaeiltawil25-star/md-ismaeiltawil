@@ -4,9 +4,10 @@
 #include <QMainWindow>
 #include <QStringList>
 
+#include "app/document/DocumentTabPage.h"
+
 class QStackedWidget;
 class QTabWidget;
-class QTextBrowser;
 class ReaderAppearanceController;
 
 class MainWindow : public QMainWindow
@@ -39,9 +40,9 @@ private:
     void updateStatusBarForTab(int index);
     void setStatusBarReady();
 
-    void syncBrowserZoom(QTextBrowser *browser) const;
+    void syncBrowserZoom(DocumentTabPage *tabPage) const;
     void applyGlobalZoomToAllBrowsers();
-    void applyReaderAppearanceToBrowser(QTextBrowser *browser) const;
+    void applyReaderAppearanceToBrowser(DocumentTabPage *tabPage) const;
     void applyReaderAppearanceToAllBrowsers();
     void addToRecentFiles(const QString &absPath);
     void updateRecentFilesMenu();

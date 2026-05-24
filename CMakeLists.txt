@@ -73,6 +73,11 @@ add_executable(md-backpack-reader
     src/main.cpp
     src/app/MainWindow.h
     src/app/MainWindow.cpp
+    src/app/document/DocumentTabPage.h
+    src/app/document/DocumentTabPage.cpp
+    src/app/document/DocumentOpenResult.h
+    src/app/document/DocumentOpenPipeline.h
+    src/app/document/DocumentOpenPipeline.cpp
     src/app/SingleInstanceService.h
     src/app/SingleInstanceService.cpp
     src/app/appearance/ReaderAppearanceDialog.h
