@@ -68,6 +68,8 @@ add_unit_test(PerformanceMonitorTest unit/PerformanceMonitorTest.cpp)
 add_unit_test(ErrorLoggerTest unit/ErrorLoggerTest.cpp)
 add_unit_test(RenderPipelineContractTest unit/RenderPipelineContractTest.cpp)
 
+add_subdirectory(unit/pdf)
+
 add_executable(DocumentOpenPipelineTest
     unit/DocumentOpenPipelineTest.cpp
     ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp
