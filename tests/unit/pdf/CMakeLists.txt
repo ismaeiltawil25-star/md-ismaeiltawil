@@ -9,3 +9,7 @@ add_test(NAME PdfHeaderParserTest COMMAND PdfHeaderParserTest)
 add_executable(PdfTokenizerTest PdfTokenizerTest.cpp)
 target_link_libraries(PdfTokenizerTest PRIVATE pdf_core Qt6::Test)
 add_test(NAME PdfTokenizerTest COMMAND PdfTokenizerTest)
+
+add_executable(PdfObjectParserTest PdfObjectParserTest.cpp)
+target_link_libraries(PdfObjectParserTest PRIVATE pdf_core Qt6::Test)
+add_test(NAME PdfObjectParserTest COMMAND PdfObjectParserTest)
