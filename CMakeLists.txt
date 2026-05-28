@@ -100,5 +100,7 @@ target_link_libraries(md-backpack-reader PRIVATE
     md_backpack_core md_backpack_appearance Qt6::Widgets Qt6::Network
 )
 
+add_subdirectory(src/pdf)
+
 enable_testing()
 add_subdirectory(tests)

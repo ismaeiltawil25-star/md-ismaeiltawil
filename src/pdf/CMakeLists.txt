@@ -1,3 +1,6 @@
-add_library(pdf_core INTERFACE)
-target_include_directories(pdf_core INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(pdf_core INTERFACE Qt6::Core)
+add_library(pdf_core STATIC
+    PdfHeaderParser.cpp
+)
+target_include_directories(pdf_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(pdf_core PUBLIC Qt6::Core)
+set_target_properties(pdf_core PROPERTIES AUTOMOC ON)
