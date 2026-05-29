@@ -65,8 +65,9 @@ static PdfDocument buildDocWithContentsArray(const QByteArray &part1, const QByt
     pdf += "startxref\n" + QByteArray::number(xrefOffset) + "\n%%EOF\n";
     return PdfDocumentLoader().load(pdf).document;
 }
+class PdfPageContentPipelineTest : public QObject {
+    Q_OBJECT
 
-class PdfPageContentPipelineTest : public QObject { Q_OBJECT
 private slots:
     void testAnalyzeBlankPage();
     void testAnalyzeIdentityTextContent();
