@@ -17,6 +17,7 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     void openDocumentsFromPaths(const QStringList &paths);
+    static bool isPdfFile(const QString &path);
 
 private slots:
     void openFile();
@@ -36,6 +37,8 @@ protected:
 
 private:
     void openDocumentFromPath(const QString &path);
+    void openPdfDocument(const QString &path);
+    QString tabFilePath(QWidget *tab) const;
     void updateEmptyState();
     void updateStatusBarForTab(int index);
     void setStatusBarReady();

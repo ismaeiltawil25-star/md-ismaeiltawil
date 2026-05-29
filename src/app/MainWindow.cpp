@@ -24,6 +24,10 @@
 
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QScrollArea>
+
+#include "PdfFilePreviewService.h"
+#include "PdfSinglePagePreviewWidget.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -101,7 +105,10 @@ void MainWindow::openFile()
         this,
         "Open Markdown File(s)",
         QString(),
-        "Markdown / Text Files (*.md *.markdown *.txt);;All Files (*)");
+        "Supported Files (*.md *.markdown *.txt *.pdf);;"
+        "Markdown / Text Files (*.md *.markdown *.txt);;"
+        "PDF Files (*.pdf);;"
+        "All Files (*)");
 
     if (paths.isEmpty())
         return;
@@ -114,7 +121,13 @@ static bool isSupportedFile(const QString &path)
 {
     return path.endsWith(".md", Qt::CaseInsensitive)
         || path.endsWith(".markdown", Qt::CaseInsensitive)
-        || path.endsWith(".txt", Qt::CaseInsensitive);
+        || path.endsWith(".txt", Qt::CaseInsensitive)
+        || MainWindow::isPdfFile(path);
+}
+
+bool MainWindow::isPdfFile(const QString &path)
+{
+    return path.endsWith(".pdf", Qt::CaseInsensitive);
 }
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)
@@ -164,20 +177,31 @@ void MainWindow::openDocumentsFromPaths(const QStringList &paths)
         statusBar()->showMessage("No supported files opened");
 }
 
+QString MainWindow::tabFilePath(QWidget *tab) const
+{
+    if (auto *dtp = qobject_cast<DocumentTabPage *>(tab))
+        return dtp->filePath();
+    return tab->property("absoluteFilePath").toString();
+}
+
 void MainWindow::openDocumentFromPath(const QString &path)
 {
     QString absPath = QFileInfo(path).absoluteFilePath();
 
     for (int i = 0; i < m_tabWidget->count(); ++i) {
-        auto *tabPage = qobject_cast<DocumentTabPage *>(m_tabWidget->widget(i));
-        if (!tabPage) continue;
-        QString tabPath = tabPage->filePath();
+        QWidget *tab = m_tabWidget->widget(i);
+        QString tabPath = tabFilePath(tab);
         if (!tabPath.isEmpty() && QFileInfo(tabPath).absoluteFilePath() == absPath) {
             m_tabWidget->setCurrentIndex(i);
             statusBar()->showMessage(QString("Already open: %1").arg(path));
             addToRecentFiles(absPath);
             return;
         }
+    }
+
+    if (isPdfFile(path)) {
+        openPdfDocument(path);
+        return;
     }
 
     DocumentOpenPipeline pipeline;
@@ -460,6 +484,41 @@ void MainWindow::onAnchorClicked(const QUrl &url)
         || url.scheme() == QStringLiteral("mailto")) {
         if (!QDesktopServices::openUrl(url))
             statusBar()->showMessage(QString("Could not open: %1").arg(url.toString()));
+    }
+}
+
+void MainWindow::openPdfDocument(const QString &path)
+{
+    QString absPath = QFileInfo(path).absoluteFilePath();
+
+    PdfFilePreviewService service;
+    auto result = service.renderFilePage(absPath);
+
+    auto *scrollArea = new QScrollArea;
+    scrollArea->setWidgetResizable(false);
+    scrollArea->setAlignment(Qt::AlignCenter);
+    scrollArea->setProperty("absoluteFilePath", absPath);
+    scrollArea->setProperty("contentType", "pdf");
+    scrollArea->setProperty("recentEligible", result.ok());
+
+    auto *previewWidget = new PdfSinglePagePreviewWidget;
+    scrollArea->setWidget(previewWidget);
+
+    if (!result.image.isNull())
+        previewWidget->setImage(result.image);
+    else
+        previewWidget->setStatusText(result.diagnosticSummary);
+
+    int index = m_tabWidget->addTab(scrollArea, QFileInfo(path).fileName());
+    m_tabWidget->setTabToolTip(index, absPath);
+    m_tabWidget->setCurrentIndex(index);
+    updateEmptyState();
+
+    if (result.ok()) {
+        statusBar()->showMessage(QString("Opened: %1").arg(path));
+        addToRecentFiles(absPath);
+    } else {
+        statusBar()->showMessage(result.diagnosticSummary);
     }
 }
 

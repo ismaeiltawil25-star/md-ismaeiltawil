@@ -97,7 +97,9 @@ if(WIN32)
 endif()
 
 target_link_libraries(md-backpack-reader PRIVATE
-    md_backpack_core md_backpack_appearance Qt6::Widgets Qt6::Network
+    md_backpack_core md_backpack_appearance
+    pdf_widgets pdf_preview_services
+    Qt6::Widgets Qt6::Network
 )
 
 add_subdirectory(src/pdf)

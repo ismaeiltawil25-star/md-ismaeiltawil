@@ -72,6 +72,21 @@ add_subdirectory(unit/pdf)
 add_subdirectory(unit/widgets)
 add_subdirectory(unit/services)
 
+add_executable(MainWindowPdfIntegrationTest
+    unit/MainWindowPdfIntegrationTest.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/MainWindow.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/document/DocumentOpenPipeline.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/appearance/ReaderAppearanceDialog.cpp
+)
+target_include_directories(MainWindowPdfIntegrationTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(MainWindowPdfIntegrationTest PRIVATE
+    md_backpack_core md_backpack_appearance
+    pdf_widgets pdf_preview_services pdf_rendering pdf_core
+    Qt6::Widgets Qt6::Test Qt6::Network
+)
+add_test(NAME MainWindowPdfIntegrationTest COMMAND MainWindowPdfIntegrationTest)
+
 add_executable(DocumentOpenPipelineTest
     unit/DocumentOpenPipelineTest.cpp
     ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp
