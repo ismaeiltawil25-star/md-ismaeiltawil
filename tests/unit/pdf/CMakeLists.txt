@@ -53,3 +53,7 @@ add_test(NAME PdfStreamObjectReaderTest COMMAND PdfStreamObjectReaderTest)
 add_executable(PdfRawStreamStoreTest PdfRawStreamStoreTest.cpp)
 target_link_libraries(PdfRawStreamStoreTest PRIVATE pdf_core Qt6::Test)
 add_test(NAME PdfRawStreamStoreTest COMMAND PdfRawStreamStoreTest)
+
+add_executable(PdfStreamDecoderTest PdfStreamDecoderTest.cpp)
+target_link_libraries(PdfStreamDecoderTest PRIVATE pdf_core Qt6::Test Qt6::ZlibPrivate)
+add_test(NAME PdfStreamDecoderTest COMMAND PdfStreamDecoderTest)
