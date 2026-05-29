@@ -3,6 +3,7 @@
 #include "PdfByteReader.h"
 #include "PdfXRef.h"
 #include "PdfObjectStore.h"
+#include "PdfRawStreamStore.h"
 #include <QString>
 
 enum class PdfIndirectObjectLoaderWarning : uint8_t {
@@ -28,12 +29,17 @@ struct PdfLoadResult {
     int duplicateCount = 0;
     int unsupportedStreamCount = 0;
 
+    int streamLoadedCount = 0;
+    int streamFailureCount = 0;
+    int duplicateStreamCount = 0;
+
     bool ok() const { return warning == PdfIndirectObjectLoaderWarning::None; }
 };
 
 class PdfIndirectObjectLoader {
 public:
     PdfLoadResult load(PdfByteReader &reader,
-                       const PdfXRefTable &xrefTable,
-                       PdfObjectStore &store);
+                        const PdfXRefTable &xrefTable,
+                        PdfObjectStore &store,
+                        PdfRawStreamStore *streamStore = nullptr);
 };

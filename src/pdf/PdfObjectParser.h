@@ -22,6 +22,7 @@ struct PdfObjectResult {
     PdfObjectPtr object;
     PdfObjectParserWarning warning = PdfObjectParserWarning::None;
     QString diagnosticMessage;
+    qsizetype streamKeywordOffset = -1;
 
     bool hasWarning() const { return warning != PdfObjectParserWarning::None; }
 };
@@ -32,6 +33,7 @@ struct PdfIndirectResult {
     PdfObjectPtr object;
     PdfObjectParserWarning warning = PdfObjectParserWarning::None;
     QString diagnosticMessage;
+    qsizetype streamKeywordOffset = -1;
 };
 
 class PdfObjectParser {

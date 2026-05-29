@@ -2,6 +2,7 @@
 #include "PdfByteReader.h"
 #include "PdfXRefParser.h"
 #include "PdfIndirectObjectLoader.h"
+#include "PdfRawStreamStore.h"
 
 class PdfIndirectObjectLoaderTest : public QObject {
     Q_OBJECT
@@ -22,6 +23,19 @@ private slots:
     void testInUseObjNumZeroSkipped();
     void testStoreRejectsInvalidKey();
     void testCountsAddUp();
+
+    void testLoadStreamObject();
+    void testLoadStreamObjectWithFilter();
+    void testLoadStreamMissingLength();
+    void testLoadStreamIndirectLength();
+    void testLoadStreamBodyReaderFailure();
+    void testLoadStreamMissingEndobj();
+    void testLoadStreamMalformedEndobj();
+    void testLoadStreamAndNormalObject();
+    void testLoadStreamLegacyWithoutStreamStore();
+    void testLoadStreamDictionaryStoredBeforeBody();
+    void testLoadStreamDuplicateStreamKey();
+    void testLoadStreamEndstreamEndobjFullPipeline();
 };
 
 void PdfIndirectObjectLoaderTest::testLoadSingleObject() {
@@ -353,6 +367,299 @@ void PdfIndirectObjectLoaderTest::testCountsAddUp() {
     QCOMPARE(r.skippedCount, 0);
     QCOMPARE(r.mismatchCount, 0);
     QCOMPARE(r.duplicateCount, 0);
+}
+
+void PdfIndirectObjectLoaderTest::testLoadStreamObject() {
+    QByteArray data("1 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream endobj");
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub; sub.startObjNum = 1; sub.count = 1;
+    PdfXRefEntry e; e.objNum = 1; e.offset = 0; e.genNum = 0; e.type = PdfXRefEntryType::InUse;
+    sub.entries.append(e);
+    table.subsections.append(sub);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store, &streamStore);
+
+    QVERIFY(r.ok());
+    QCOMPARE(r.loadedCount, 1);
+    QCOMPARE(r.streamLoadedCount, 1);
+    QCOMPARE(r.streamFailureCount, 0);
+    QCOMPARE(r.unsupportedStreamCount, 0);
+
+    QVERIFY(store.resolve(1, 0).found());
+    QVERIFY(streamStore.contains(1, 0));
+    const PdfRawStreamObject *rs = streamStore.get(1, 0);
+    QVERIFY(rs != nullptr);
+    QCOMPARE(rs->rawBody, QByteArrayView("AAAAA"));
+    QCOMPARE(rs->length, qsizetype(5));
+}
+
+void PdfIndirectObjectLoaderTest::testLoadStreamObjectWithFilter() {
+    QByteArray data("1 0 obj << /Length 5 /Filter /FlateDecode >>\nstream\nAAAAA\nendstream endobj");
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub; sub.startObjNum = 1; sub.count = 1;
+    PdfXRefEntry e; e.objNum = 1; e.offset = 0; e.genNum = 0; e.type = PdfXRefEntryType::InUse;
+    sub.entries.append(e);
+    table.subsections.append(sub);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store, &streamStore);
+
+    QVERIFY(r.ok());
+    QCOMPARE(r.streamLoadedCount, 1);
+
+    const PdfRawStreamObject *rs = streamStore.get(1, 0);
+    QVERIFY(rs != nullptr);
+    QCOMPARE(rs->filters.size(), 1);
+    QCOMPARE(rs->filters[0], QByteArray("FlateDecode"));
+}
+
+void PdfIndirectObjectLoaderTest::testLoadStreamMissingLength() {
+    QByteArray data("1 0 obj << /Type /XObject >>\nstream\nAAAAA\nendstream endobj");
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub; sub.startObjNum = 1; sub.count = 1;
+    PdfXRefEntry e; e.objNum = 1; e.offset = 0; e.genNum = 0; e.type = PdfXRefEntryType::InUse;
+    sub.entries.append(e);
+    table.subsections.append(sub);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store, &streamStore);
+
+    QVERIFY(r.ok());
+    QCOMPARE(r.loadedCount, 1);
+    QCOMPARE(r.streamFailureCount, 1);
+    QCOMPARE(r.streamLoadedCount, 0);
+    QCOMPARE(r.skippedCount, 0);
+
+    QVERIFY(store.resolve(1, 0).found());
+    QVERIFY(!streamStore.contains(1, 0));
+}
+
+void PdfIndirectObjectLoaderTest::testLoadStreamIndirectLength() {
+    QByteArray data("1 0 obj << /Length 5 0 R >>\nstream\nAAAAA\nendstream endobj");
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub; sub.startObjNum = 1; sub.count = 1;
+    PdfXRefEntry e; e.objNum = 1; e.offset = 0; e.genNum = 0; e.type = PdfXRefEntryType::InUse;
+    sub.entries.append(e);
+    table.subsections.append(sub);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store, &streamStore);
+
+    QVERIFY(r.ok());
+    QCOMPARE(r.loadedCount, 1);
+    QCOMPARE(r.streamFailureCount, 1);
+    QVERIFY(store.resolve(1, 0).found());
+    QVERIFY(!streamStore.contains(1, 0));
+}
+
+void PdfIndirectObjectLoaderTest::testLoadStreamBodyReaderFailure() {
+    QByteArray data("1 0 obj << /Length 999 >>\nstream\nAAAAA\nendstream endobj");
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub; sub.startObjNum = 1; sub.count = 1;
+    PdfXRefEntry e; e.objNum = 1; e.offset = 0; e.genNum = 0; e.type = PdfXRefEntryType::InUse;
+    sub.entries.append(e);
+    table.subsections.append(sub);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store, &streamStore);
+
+    QVERIFY(r.ok());
+    QCOMPARE(r.loadedCount, 1);
+    QCOMPARE(r.streamFailureCount, 1);
+    QVERIFY(store.resolve(1, 0).found());
+    QVERIFY(!streamStore.contains(1, 0));
+}
+
+void PdfIndirectObjectLoaderTest::testLoadStreamMissingEndobj() {
+    QByteArray data("1 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream missing");
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub; sub.startObjNum = 1; sub.count = 1;
+    PdfXRefEntry e; e.objNum = 1; e.offset = 0; e.genNum = 0; e.type = PdfXRefEntryType::InUse;
+    sub.entries.append(e);
+    table.subsections.append(sub);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store, &streamStore);
+
+    QVERIFY(r.ok());
+    QCOMPARE(r.loadedCount, 1);
+    QCOMPARE(r.streamFailureCount, 1);
+    QCOMPARE(r.streamLoadedCount, 0);
+    QVERIFY(store.resolve(1, 0).found());
+    QVERIFY(!streamStore.contains(1, 0));
+}
+
+void PdfIndirectObjectLoaderTest::testLoadStreamMalformedEndobj() {
+    QByteArray data("1 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream endobjXYZ extra");
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub; sub.startObjNum = 1; sub.count = 1;
+    PdfXRefEntry e; e.objNum = 1; e.offset = 0; e.genNum = 0; e.type = PdfXRefEntryType::InUse;
+    sub.entries.append(e);
+    table.subsections.append(sub);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store, &streamStore);
+
+    QVERIFY(r.ok());
+    QCOMPARE(r.loadedCount, 1);
+    QCOMPARE(r.streamFailureCount, 1);
+    QVERIFY(store.resolve(1, 0).found());
+    QVERIFY(!streamStore.contains(1, 0));
+}
+
+void PdfIndirectObjectLoaderTest::testLoadStreamAndNormalObject() {
+    QByteArray data1("1 0 obj 42 endobj ");
+    qsizetype off2 = data1.size();
+    QByteArray data = data1 + QByteArray("2 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream endobj");
+
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub; sub.startObjNum = 1; sub.count = 2;
+    PdfXRefEntry e1; e1.objNum = 1; e1.offset = 0; e1.genNum = 0; e1.type = PdfXRefEntryType::InUse;
+    sub.entries.append(e1);
+    PdfXRefEntry e2; e2.objNum = 2; e2.offset = off2; e2.genNum = 0; e2.type = PdfXRefEntryType::InUse;
+    sub.entries.append(e2);
+    table.subsections.append(sub);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store, &streamStore);
+
+    QVERIFY(r.ok());
+    QCOMPARE(r.loadedCount, 2);
+    QCOMPARE(r.streamLoadedCount, 1);
+    QCOMPARE(r.streamFailureCount, 0);
+    QVERIFY(store.resolve(1, 0).found());
+    QVERIFY(store.resolve(2, 0).found());
+    QVERIFY(streamStore.contains(2, 0));
+}
+
+void PdfIndirectObjectLoaderTest::testLoadStreamLegacyWithoutStreamStore() {
+    QByteArray data("1 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream endobj");
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub; sub.startObjNum = 1; sub.count = 1;
+    PdfXRefEntry e; e.objNum = 1; e.offset = 0; e.genNum = 0; e.type = PdfXRefEntryType::InUse;
+    sub.entries.append(e);
+    table.subsections.append(sub);
+
+    PdfObjectStore store;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store);
+
+    QCOMPARE(r.warning, PdfIndirectObjectLoaderWarning::UnsupportedStream);
+    QCOMPARE(r.unsupportedStreamCount, 1);
+    QCOMPARE(r.skippedCount, 1);
+    QCOMPARE(r.loadedCount, 0);
+    QCOMPARE(store.count(), qsizetype(0));
+}
+
+void PdfIndirectObjectLoaderTest::testLoadStreamDictionaryStoredBeforeBody() {
+    QByteArray data("1 0 obj << /Type /XObject >>\nstream\nAAAAA\nendstream endobj");
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub; sub.startObjNum = 1; sub.count = 1;
+    PdfXRefEntry e; e.objNum = 1; e.offset = 0; e.genNum = 0; e.type = PdfXRefEntryType::InUse;
+    sub.entries.append(e);
+    table.subsections.append(sub);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store, &streamStore);
+
+    QVERIFY(r.ok());
+    QCOMPARE(r.loadedCount, 1);
+    QCOMPARE(r.streamFailureCount, 1);
+    QVERIFY(store.resolve(1, 0).found());
+    QVERIFY(!streamStore.contains(1, 0));
+}
+
+void PdfIndirectObjectLoaderTest::testLoadStreamDuplicateStreamKey() {
+    QByteArray data("1 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream endobj");
+
+    // First load
+    PdfByteReader reader1(data);
+    PdfXRefTable table1;
+    PdfXRefSubsection sub1; sub1.startObjNum = 1; sub1.count = 1;
+    PdfXRefEntry e1; e1.objNum = 1; e1.offset = 0; e1.genNum = 0; e1.type = PdfXRefEntryType::InUse;
+    sub1.entries.append(e1);
+    table1.subsections.append(sub1);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    loader.load(reader1, table1, store, &streamStore);
+    QCOMPARE(streamStore.count(), qsizetype(1));
+
+    // Second load — same objNum, different stream
+    QByteArray data2("1 0 obj << /Length 3 >>\nstream\nBBB\nendstream endobj");
+    PdfByteReader reader2(data2);
+    PdfXRefTable table2;
+    PdfXRefSubsection sub2; sub2.startObjNum = 1; sub2.count = 1;
+    PdfXRefEntry e2; e2.objNum = 1; e2.offset = 0; e2.genNum = 0; e2.type = PdfXRefEntryType::InUse;
+    sub2.entries.append(e2);
+    table2.subsections.append(sub2);
+
+    auto r = loader.load(reader2, table2, store, &streamStore);
+    QCOMPARE(r.streamLoadedCount, 1);
+    QCOMPARE(r.duplicateStreamCount, 1);
+    QCOMPARE(streamStore.count(), qsizetype(1));
+    const PdfRawStreamObject *rs = streamStore.get(1, 0);
+    QVERIFY(rs != nullptr);
+    QCOMPARE(rs->rawBody, QByteArrayView("BBB"));
+}
+
+void PdfIndirectObjectLoaderTest::testLoadStreamEndstreamEndobjFullPipeline() {
+    QByteArray data("1 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream endobj");
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub; sub.startObjNum = 1; sub.count = 1;
+    PdfXRefEntry e; e.objNum = 1; e.offset = 0; e.genNum = 0; e.type = PdfXRefEntryType::InUse;
+    sub.entries.append(e);
+    table.subsections.append(sub);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store, &streamStore);
+
+    QVERIFY(r.ok());
+    QCOMPARE(r.loadedCount, 1);
+    QCOMPARE(r.streamLoadedCount, 1);
+    QCOMPARE(r.streamFailureCount, 0);
+    QVERIFY(store.resolve(1, 0).found());
+    QVERIFY(streamStore.contains(1, 0));
+
+    const PdfRawStreamObject *rs = streamStore.get(1, 0);
+    QVERIFY(rs != nullptr);
+    QCOMPARE(rs->rawBody, QByteArrayView("AAAAA"));
+    QCOMPARE(rs->length, qsizetype(5));
+    QVERIFY(rs->hasIdentity);
+    QCOMPARE(rs->identity.objNum, 1);
 }
 
 QTEST_MAIN(PdfIndirectObjectLoaderTest)

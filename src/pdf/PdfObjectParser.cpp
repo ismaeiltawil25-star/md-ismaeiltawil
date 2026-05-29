@@ -236,14 +236,17 @@ PdfObjectResult PdfObjectParser::parseDictionary(int depth) {
         warning = PdfObjectParserWarning::UnterminatedDict;
     }
 
+    qsizetype streamOffsetCapture = -1;
     ensureLookahead(1);
     if (peek(0).token.type == PdfTokenType::StreamKeyword) {
+        streamOffsetCapture = peek(0).token.offset;
         if (warning == PdfObjectParserWarning::None) warning = PdfObjectParserWarning::UnsupportedStreamObject;
     }
 
     PdfObjectResult r;
     r.object = PdfObject::makeDictionary(dict, 0, 0);
     r.warning = warning;
+    r.streamKeywordOffset = streamOffsetCapture;
     if (warning == PdfObjectParserWarning::UnterminatedDict) {
         r.diagnosticMessage = QStringLiteral("Unterminated dictionary");
     }
@@ -297,6 +300,7 @@ PdfIndirectResult PdfObjectParser::parseIndirectObject() {
         r.object = bodyResult.object;
         r.warning = PdfObjectParserWarning::UnsupportedStreamObject;
         r.diagnosticMessage = bodyResult.diagnosticMessage;
+        r.streamKeywordOffset = bodyResult.streamKeywordOffset;
         return r;
     }
 
@@ -309,6 +313,7 @@ PdfIndirectResult PdfObjectParser::parseIndirectObject() {
         r.warning = PdfObjectParserWarning::MissingEndobj;
         r.diagnosticMessage = QStringLiteral("Missing endobj in indirect object %1 %2")
             .arg(objNum).arg(genNum);
+        r.streamKeywordOffset = bodyResult.streamKeywordOffset;
         return r;
     }
 
@@ -317,6 +322,7 @@ PdfIndirectResult PdfObjectParser::parseIndirectObject() {
     r.genNum = static_cast<int>(genNum);
     r.object = bodyResult.object;
     r.warning = bodyResult.warning;
+    r.streamKeywordOffset = bodyResult.streamKeywordOffset;
     if (bodyResult.warning != PdfObjectParserWarning::None) {
         r.diagnosticMessage = bodyResult.diagnosticMessage;
     }

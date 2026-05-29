@@ -462,6 +462,7 @@ void PdfObjectParserTest::testParseIndirectObjectStream() {
     QVERIFY(result.object != nullptr);
     QCOMPARE(result.object->kind, PdfObjectKind::Dictionary);
     QCOMPARE(result.warning, PdfObjectParserWarning::UnsupportedStreamObject);
+    QVERIFY(result.streamKeywordOffset > 0);
 }
 
 void PdfObjectParserTest::testParseRefInArray() {
@@ -601,6 +602,7 @@ void PdfObjectParserTest::testStreamKeywordWarning() {
     QVERIFY(result.object != nullptr);
     QCOMPARE(result.object->kind, PdfObjectKind::Dictionary);
     QCOMPARE(result.warning, PdfObjectParserWarning::UnsupportedStreamObject);
+    QVERIFY(result.streamKeywordOffset > 0);
 }
 
 void PdfObjectParserTest::testOffsetAndLength() {
