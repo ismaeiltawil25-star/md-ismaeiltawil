@@ -17,3 +17,7 @@ add_test(NAME PdfObjectParserTest COMMAND PdfObjectParserTest)
 add_executable(PdfObjectStoreTest PdfObjectStoreTest.cpp)
 target_link_libraries(PdfObjectStoreTest PRIVATE pdf_core Qt6::Test)
 add_test(NAME PdfObjectStoreTest COMMAND PdfObjectStoreTest)
+
+add_executable(PdfXRefParserTest PdfXRefParserTest.cpp)
+target_link_libraries(PdfXRefParserTest PRIVATE pdf_core Qt6::Test)
+add_test(NAME PdfXRefParserTest COMMAND PdfXRefParserTest)
