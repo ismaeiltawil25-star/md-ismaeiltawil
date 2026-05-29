@@ -39,6 +39,8 @@ private slots:
     void testParseNonZeroStartxref();
     void testParseNonZeroReaderStart();
     void testParseReaderPreservedOnInvalidStartxref();
+    void testParseXRefEntryObjNum();
+    void testParseXRefEntryObjNumWithMalformed();
 };
 
 void PdfXRefParserTest::testParseSingleSubsection() {
@@ -51,6 +53,7 @@ void PdfXRefParserTest::testParseSingleSubsection() {
     QCOMPARE(result.table.subsections[0].startObjNum, 0);
     QCOMPARE(result.table.subsections[0].count, 1);
     QCOMPARE(result.table.subsections[0].entries.size(), 1);
+    QCOMPARE(result.table.subsections[0].entries[0].objNum, 0);
     QCOMPARE(result.table.subsections[0].entries[0].offset, qsizetype(9));
     QCOMPARE(result.table.subsections[0].entries[0].genNum, 0);
     QCOMPARE(result.table.subsections[0].entries[0].type, PdfXRefEntryType::InUse);
@@ -362,6 +365,33 @@ void PdfXRefParserTest::testParseReaderPreservedOnInvalidStartxref() {
     auto result = parser.parse(reader, -1);
     QCOMPARE(result.warning, PdfXRefParserWarning::InvalidStartxref);
     QCOMPARE(reader.tell(), qsizetype(3));
+}
+
+void PdfXRefParserTest::testParseXRefEntryObjNum() {
+    QByteArray data("xref\n0 3\n0000000000 65535 f\n0000000009 00000 n\n0000000058 00000 n\n");
+    PdfByteReader reader(data);
+    PdfXRefParser parser;
+    auto result = parser.parse(reader, 0);
+    QVERIFY(result.ok());
+    auto &sub = result.table.subsections[0];
+    QCOMPARE(sub.entries.size(), 3);
+    QCOMPARE(sub.entries[0].objNum, 0);
+    QCOMPARE(sub.entries[1].objNum, 1);
+    QCOMPARE(sub.entries[2].objNum, 2);
+}
+
+void PdfXRefParserTest::testParseXRefEntryObjNumWithMalformed() {
+    QByteArray data("xref\n0 3\n0000000000 65535 f\nXXXXXXXXXX 00000 n\n0000000058 00000 n\n");
+    PdfByteReader reader(data);
+    PdfXRefParser parser;
+    auto result = parser.parse(reader, 0);
+    // entry 1 is malformed and skipped; entries list has 2 entries
+    // but entry[1] (the third original line) should have objNum=2, NOT objNum=1
+    auto &sub = result.table.subsections[0];
+    QCOMPARE(sub.entries.size(), 2);
+    QCOMPARE(sub.entries[0].objNum, 0);
+    QCOMPARE(sub.entries[1].objNum, 2);
+    QCOMPARE(result.warning, PdfXRefParserWarning::MalformedEntry);
 }
 
 QTEST_MAIN(PdfXRefParserTest)

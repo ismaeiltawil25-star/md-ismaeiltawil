@@ -10,6 +10,7 @@ enum class PdfXRefEntryType : uint8_t {
 };
 
 struct PdfXRefEntry {
+    int objNum = 0;
     qsizetype offset = 0;
     int genNum = 0;
     PdfXRefEntryType type = PdfXRefEntryType::Free;

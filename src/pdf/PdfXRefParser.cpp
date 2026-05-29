@@ -126,6 +126,7 @@ PdfXRefParserResult PdfXRefParser::parse(PdfByteReader &reader, qsizetype startx
             }
 
             PdfXRefEntry entry;
+            entry.objNum = startNum + i;
             entry.offset = parseDecimal10(entryLine.left(10));
             entry.genNum = static_cast<int>(parseDecimal10(entryLine.mid(11, 5)));
             entry.type = (entryLine[17] == 'n') ? PdfXRefEntryType::InUse : PdfXRefEntryType::Free;
