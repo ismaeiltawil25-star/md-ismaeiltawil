@@ -102,6 +102,7 @@ target_link_libraries(md-backpack-reader PRIVATE
 
 add_subdirectory(src/pdf)
 add_subdirectory(src/widgets)
+add_subdirectory(src/services/pdf)
 
 enable_testing()
 add_subdirectory(tests)

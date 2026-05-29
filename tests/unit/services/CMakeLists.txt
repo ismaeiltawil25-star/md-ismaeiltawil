@@ -1,0 +1,3 @@
+add_executable(PdfFilePreviewServiceTest PdfFilePreviewServiceTest.cpp)
+target_link_libraries(PdfFilePreviewServiceTest PRIVATE pdf_preview_services Qt6::Test)
+add_test(NAME PdfFilePreviewServiceTest COMMAND PdfFilePreviewServiceTest)
