@@ -1,0 +1,3 @@
+add_executable(PdfBasicPathRendererTest PdfBasicPathRendererTest.cpp)
+target_link_libraries(PdfBasicPathRendererTest PRIVATE pdf_rendering Qt6::Test)
+add_test(NAME PdfBasicPathRendererTest COMMAND PdfBasicPathRendererTest)

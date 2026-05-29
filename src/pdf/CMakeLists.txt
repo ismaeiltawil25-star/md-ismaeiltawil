@@ -33,3 +33,5 @@ endif()
 target_link_libraries(pdf_core PRIVATE Qt6::ZlibPrivate)
 
 set_target_properties(pdf_core PROPERTIES AUTOMOC ON)
+
+add_subdirectory(rendering)

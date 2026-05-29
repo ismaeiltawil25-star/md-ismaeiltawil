@@ -97,3 +97,5 @@ add_test(NAME PdfPageGeometryResolverTest COMMAND PdfPageGeometryResolverTest)
 add_executable(PdfPageRenderPlanBuilderTest PdfPageRenderPlanBuilderTest.cpp)
 target_link_libraries(PdfPageRenderPlanBuilderTest PRIVATE pdf_core Qt6::Test Qt6::ZlibPrivate)
 add_test(NAME PdfPageRenderPlanBuilderTest COMMAND PdfPageRenderPlanBuilderTest)
+
+add_subdirectory(rendering)
