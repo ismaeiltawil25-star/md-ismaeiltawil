@@ -45,3 +45,7 @@ add_test(NAME PdfDocumentLoaderTest COMMAND PdfDocumentLoaderTest)
 add_executable(PdfStreamBodyReaderTest PdfStreamBodyReaderTest.cpp)
 target_link_libraries(PdfStreamBodyReaderTest PRIVATE pdf_core Qt6::Test)
 add_test(NAME PdfStreamBodyReaderTest COMMAND PdfStreamBodyReaderTest)
+
+add_executable(PdfStreamObjectReaderTest PdfStreamObjectReaderTest.cpp)
+target_link_libraries(PdfStreamObjectReaderTest PRIVATE pdf_core Qt6::Test)
+add_test(NAME PdfStreamObjectReaderTest COMMAND PdfStreamObjectReaderTest)
