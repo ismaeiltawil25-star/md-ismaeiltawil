@@ -85,3 +85,7 @@ add_test(NAME PdfPathRecorderTest COMMAND PdfPathRecorderTest)
 add_executable(PdfTextRunRecorderTest PdfTextRunRecorderTest.cpp)
 target_link_libraries(PdfTextRunRecorderTest PRIVATE pdf_core Qt6::Test)
 add_test(NAME PdfTextRunRecorderTest COMMAND PdfTextRunRecorderTest)
+
+add_executable(PdfPageContentPipelineTest PdfPageContentPipelineTest.cpp)
+target_link_libraries(PdfPageContentPipelineTest PRIVATE pdf_core Qt6::Test Qt6::ZlibPrivate)
+add_test(NAME PdfPageContentPipelineTest COMMAND PdfPageContentPipelineTest)
