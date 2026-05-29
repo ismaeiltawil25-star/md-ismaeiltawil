@@ -65,3 +65,7 @@ add_test(NAME PdfPageContentStreamResolverTest COMMAND PdfPageContentStreamResol
 add_executable(PdfContentStreamTokenizerTest PdfContentStreamTokenizerTest.cpp)
 target_link_libraries(PdfContentStreamTokenizerTest PRIVATE pdf_core Qt6::Test)
 add_test(NAME PdfContentStreamTokenizerTest COMMAND PdfContentStreamTokenizerTest)
+
+add_executable(PdfContentStreamInterpreterTest PdfContentStreamInterpreterTest.cpp)
+target_link_libraries(PdfContentStreamInterpreterTest PRIVATE pdf_core Qt6::Test)
+add_test(NAME PdfContentStreamInterpreterTest COMMAND PdfContentStreamInterpreterTest)
