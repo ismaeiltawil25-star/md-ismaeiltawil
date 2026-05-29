@@ -1,0 +1,3 @@
+add_executable(PdfSinglePagePreviewWidgetTest PdfSinglePagePreviewWidgetTest.cpp)
+target_link_libraries(PdfSinglePagePreviewWidgetTest PRIVATE pdf_widgets Qt6::Test)
+add_test(NAME PdfSinglePagePreviewWidgetTest COMMAND PdfSinglePagePreviewWidgetTest)

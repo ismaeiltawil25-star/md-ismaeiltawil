@@ -69,6 +69,7 @@ add_unit_test(ErrorLoggerTest unit/ErrorLoggerTest.cpp)
 add_unit_test(RenderPipelineContractTest unit/RenderPipelineContractTest.cpp)
 
 add_subdirectory(unit/pdf)
+add_subdirectory(unit/widgets)
 
 add_executable(DocumentOpenPipelineTest
     unit/DocumentOpenPipelineTest.cpp
