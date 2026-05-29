@@ -43,6 +43,14 @@ static QString createMarkdownFile() {
     return path;
 }
 
+static int countNonBg(const QImage &img) {
+    int n = 0; QRgb bg = Qt::white;
+    for (int y = 0; y < img.height(); ++y)
+        for (int x = 0; x < img.width(); ++x)
+            if (img.pixel(x, y) != bg) ++n;
+    return n;
+}
+
 class MainWindowPdfIntegrationTest : public QObject {
     Q_OBJECT
 
@@ -61,6 +69,7 @@ private slots:
 
     void testOpenTextOnlyPdf();
     void testOpenBlankPdf();
+    void testOpenMixedPathTextPdfDisplaysBoth();
     void testOpenPdfDoesNotAffectMarkdownTab();
     void testOpenPdfDoesNotBreakSubsequentMarkdownOpen();
 };
@@ -177,6 +186,8 @@ void MainWindowPdfIntegrationTest::testOpenTextOnlyPdf() {
     auto *pw = qobject_cast<PdfSinglePagePreviewWidget *>(
         qobject_cast<QScrollArea *>(tab)->widget());
     QVERIFY(pw != nullptr);
+    QVERIFY(!pw->image().isNull());
+    QVERIFY(countNonBg(pw->image()) > 0);
 }
 
 void MainWindowPdfIntegrationTest::testOpenBlankPdf() {
@@ -192,6 +203,31 @@ void MainWindowPdfIntegrationTest::testOpenBlankPdf() {
     if (tabs->count() == 0) return;
     QWidget *tab = tabs->widget(0);
     QCOMPARE(tab->property("contentType").toString(), QString("pdf"));
+    auto *pw = qobject_cast<PdfSinglePagePreviewWidget *>(
+        qobject_cast<QScrollArea *>(tab)->widget());
+    QVERIFY(pw != nullptr);
+    QVERIFY(!pw->image().isNull());
+}
+
+void MainWindowPdfIntegrationTest::testOpenMixedPathTextPdfDisplaysBoth() {
+    MainWindow w;
+    w.show();
+    QTabWidget *tabs = findTabWidget(w);
+    QVERIFY(tabs != nullptr);
+
+    QString path = createPdfFile(buildPdf(
+        "0 0 m 100 100 l S BT /F1 12 Tf (Hello) Tj ET"));
+    w.openDocumentsFromPaths({path});
+
+    QVERIFY2(tabs->count() >= 1, "A PDF tab should be created for mixed path+text PDF");
+    if (tabs->count() == 0) return;
+    QWidget *tab = tabs->widget(0);
+    QCOMPARE(tab->property("contentType").toString(), QString("pdf"));
+    auto *pw = qobject_cast<PdfSinglePagePreviewWidget *>(
+        qobject_cast<QScrollArea *>(tab)->widget());
+    QVERIFY(pw != nullptr);
+    QVERIFY(!pw->image().isNull());
+    QVERIFY(countNonBg(pw->image()) > 0);
 }
 
 void MainWindowPdfIntegrationTest::testOpenPdfDoesNotAffectMarkdownTab() {
