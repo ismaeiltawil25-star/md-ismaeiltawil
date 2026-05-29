@@ -70,8 +70,8 @@ void PdfSinglePagePreviewControllerTest::testControllerTextOnlyPage() {
     PdfSinglePagePreviewWidget w;
     PdfSinglePagePreviewController ctrl(&w);
     auto r = ctrl.renderDocumentPage(doc, 0);
-    QCOMPARE(r.warning, PdfPageImageRenderWarning::NoRenderablePaths);
-    QVERIFY(w.statusText().contains("No renderable"));
+    QCOMPARE(r.warning, PdfPageImageRenderWarning::None);
+    QVERIFY(!w.image().isNull());
 }
 void PdfSinglePagePreviewControllerTest::testControllerInvalidPageIndex() {
     auto doc = buildDoc("", false, " /MediaBox [0 0 612 792]");

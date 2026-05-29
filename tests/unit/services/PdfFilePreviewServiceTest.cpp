@@ -91,7 +91,7 @@ void PdfFilePreviewServiceTest::testRenderFileTextOnlyPdf() {
     auto *f = makeTempFile(buildPdf("BT /F1 12 Tf (Hello) Tj ET", false, " /MediaBox [0 0 612 792]"));
     PdfFilePreviewService s;
     auto r = s.renderFilePage(f->fileName());
-    QCOMPARE(r.warning, PdfFilePreviewWarning::NoRenderablePaths);
+    QCOMPARE(r.warning, PdfFilePreviewWarning::None);
     QVERIFY(r.ok()); QVERIFY(!r.image.isNull());
     delete f;
 }
