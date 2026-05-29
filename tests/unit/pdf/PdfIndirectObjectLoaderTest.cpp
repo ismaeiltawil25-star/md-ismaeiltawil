@@ -601,10 +601,9 @@ void PdfIndirectObjectLoaderTest::testLoadStreamDictionaryStoredBeforeBody() {
 }
 
 void PdfIndirectObjectLoaderTest::testLoadTwoStreamsOneLoadCall() {
-    QByteArray data1("1 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream endobj");
+    QByteArray data1("1 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream endobj\n");
     qsizetype off2 = data1.size();
-    QByteArray data2("2 0 obj << /Length 3 >>\nstream\nBBB\nendstream endobj");
-    QByteArray data = data1 + data2;
+    QByteArray data = data1 + QByteArray("2 0 obj << /Length 3 >>\nstream\nBBB\nendstream endobj\n");
 
     PdfByteReader reader(data);
     PdfXRefTable table;
@@ -625,27 +624,21 @@ void PdfIndirectObjectLoaderTest::testLoadTwoStreamsOneLoadCall() {
 
     QVERIFY(r.ok());
     QCOMPARE(r.loadedCount, 2);
-    QCOMPARE(r.streamLoadedCount + r.streamFailureCount, 2);
+    QCOMPARE(r.streamLoadedCount, 2);
+    QCOMPARE(r.streamFailureCount, 0);
+    QCOMPARE(r.skippedCount, 0);
     QVERIFY(store.resolve(1, 0).found());
     QVERIFY(store.resolve(2, 0).found());
-
-    const PdfRawStreamObject *rs1 = streamStore.get(1, 0);
-    const PdfRawStreamObject *rs2 = streamStore.get(2, 0);
-    QVERIFY(rs1 != nullptr || rs2 != nullptr);
-    if (rs1) {
-        QCOMPARE(rs1->rawBody, QByteArrayView("AAAAA"));
-    }
-    if (rs2) {
-        QCOMPARE(rs2->rawBody, QByteArrayView("BBB"));
-    }
+    QCOMPARE(streamStore.get(1, 0)->rawBody, QByteArrayView("AAAAA"));
+    QCOMPARE(streamStore.get(2, 0)->rawBody, QByteArrayView("BBB"));
 }
 
 void PdfIndirectObjectLoaderTest::testLoadNormalBetweenTwoStreams() {
-    QByteArray data1("1 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream endobj");
+    QByteArray data1("1 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream endobj\n");
     qsizetype off2 = data1.size();
-    QByteArray data2("2 0 obj 42 endobj ");
+    QByteArray data2("2 0 obj 42 endobj\n");
     qsizetype off3 = off2 + data2.size();
-    QByteArray data3("3 0 obj << /Length 3 >>\nstream\nCCC\nendstream endobj");
+    QByteArray data3("3 0 obj << /Length 3 >>\nstream\nCCC\nendstream endobj\n");
     QByteArray data = data1 + data2 + data3;
 
     PdfByteReader reader(data);
@@ -672,22 +665,13 @@ void PdfIndirectObjectLoaderTest::testLoadNormalBetweenTwoStreams() {
 
     QVERIFY(r.ok());
     QCOMPARE(r.loadedCount, 3);
+    QCOMPARE(r.streamLoadedCount, 2);
+    QCOMPARE(r.streamFailureCount, 0);
     QCOMPARE(r.skippedCount, 0);
-
     QVERIFY(store.resolve(1, 0).found());
     QVERIFY(store.resolve(2, 0).found());
     QVERIFY(store.resolve(3, 0).found());
-
-    auto obj2 = store.resolve(2, 0);
-    QCOMPARE(obj2.object->kind, PdfObjectKind::Integer);
-    QCOMPARE(obj2.object->intValue, int64_t(42));
-
-    // All objects (normal + stream dicts) stored.
-    // Stream bodies: at least the second stream (obj 3) should load.
-    // First stream (obj 1) may fail due to known sequential xref interaction
-    // with the preceding stream body extraction.
-    QCOMPARE(r.streamLoadedCount + r.streamFailureCount, 2);
-    QVERIFY(streamStore.contains(3, 0));
+    QCOMPARE(streamStore.get(1, 0)->rawBody, QByteArrayView("AAAAA"));
     QCOMPARE(streamStore.get(3, 0)->rawBody, QByteArrayView("CCC"));
 }
 
