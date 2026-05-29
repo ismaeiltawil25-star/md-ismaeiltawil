@@ -89,3 +89,7 @@ add_test(NAME PdfTextRunRecorderTest COMMAND PdfTextRunRecorderTest)
 add_executable(PdfPageContentPipelineTest PdfPageContentPipelineTest.cpp)
 target_link_libraries(PdfPageContentPipelineTest PRIVATE pdf_core Qt6::Test Qt6::ZlibPrivate)
 add_test(NAME PdfPageContentPipelineTest COMMAND PdfPageContentPipelineTest)
+
+add_executable(PdfPageGeometryResolverTest PdfPageGeometryResolverTest.cpp)
+target_link_libraries(PdfPageGeometryResolverTest PRIVATE pdf_core Qt6::Test)
+add_test(NAME PdfPageGeometryResolverTest COMMAND PdfPageGeometryResolverTest)
