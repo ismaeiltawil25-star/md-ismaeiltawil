@@ -37,3 +37,7 @@ add_test(NAME PdfCatalogResolverTest COMMAND PdfCatalogResolverTest)
 add_executable(PdfPageTreeResolverTest PdfPageTreeResolverTest.cpp)
 target_link_libraries(PdfPageTreeResolverTest PRIVATE pdf_core Qt6::Test)
 add_test(NAME PdfPageTreeResolverTest COMMAND PdfPageTreeResolverTest)
+
+add_executable(PdfDocumentLoaderTest PdfDocumentLoaderTest.cpp)
+target_link_libraries(PdfDocumentLoaderTest PRIVATE pdf_core Qt6::Test)
+add_test(NAME PdfDocumentLoaderTest COMMAND PdfDocumentLoaderTest)
