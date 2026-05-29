@@ -5,3 +5,7 @@ add_test(NAME PdfBasicPathRendererTest COMMAND PdfBasicPathRendererTest)
 add_executable(PdfPageImageRendererTest PdfPageImageRendererTest.cpp)
 target_link_libraries(PdfPageImageRendererTest PRIVATE pdf_rendering Qt6::Test Qt6::ZlibPrivate)
 add_test(NAME PdfPageImageRendererTest COMMAND PdfPageImageRendererTest)
+
+add_executable(PdfBasicTextRendererTest PdfBasicTextRendererTest.cpp)
+target_link_libraries(PdfBasicTextRendererTest PRIVATE pdf_rendering Qt6::Test)
+add_test(NAME PdfBasicTextRendererTest COMMAND PdfBasicTextRendererTest)
