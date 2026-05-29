@@ -10,12 +10,16 @@
 #include "PdfIndirectObjectLoader.h"
 #include "PdfPageTree.h"
 #include "PdfPageTreeResolver.h"
+#include "PdfRawStreamStore.h"
 
 struct PdfDocument {
+    QSharedPointer<const QByteArray> pdfData;
+
     PdfVersion version;
     PdfXRefTable xrefTable;
     PdfTrailer trailer;
     PdfObjectStore store;
+    PdfRawStreamStore streamStore;
     PdfCatalog catalog;
     PdfPageTree pageTree;
 
@@ -23,6 +27,11 @@ struct PdfDocument {
     PdfTrailerParserWarning trailerWarning = PdfTrailerParserWarning::None;
     PdfIndirectObjectLoaderWarning objectLoaderWarning = PdfIndirectObjectLoaderWarning::None;
     PdfPageTreeResolverWarning pageTreeWarning = PdfPageTreeResolverWarning::None;
+
+    int streamLoadedCount = 0;
+    int streamFailureCount = 0;
+    int duplicateStreamCount = 0;
+    int unsupportedStreamCount = 0;
 
     int pageCount() const { return pageTree.actualCount; }
 };

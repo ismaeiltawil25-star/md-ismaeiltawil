@@ -134,7 +134,10 @@ PdfDocumentLoader::PdfStartxrefResult PdfDocumentLoader::findStartxref(QByteArra
 
 PdfDocumentResult PdfDocumentLoader::load(QByteArrayView data) {
     PdfDocumentResult result;
-    PdfByteReader reader(data);
+
+    result.document.pdfData = QSharedPointer<const QByteArray>(
+        new QByteArray(data.data(), data.size()));
+    PdfByteReader reader(*result.document.pdfData);
 
     // 1. Header
     auto headerResult = PdfHeaderParser::parse(reader);
@@ -146,7 +149,7 @@ PdfDocumentResult PdfDocumentLoader::load(QByteArrayView data) {
     result.document.version = headerResult.version;
 
     // 2. startxref
-    auto sxResult = findStartxref(data);
+    auto sxResult = findStartxref(*result.document.pdfData);
     if (!sxResult.ok()) {
         result.warning = sxResult.warning;
         result.diagnosticMessage = sxResult.diagnosticMessage;
@@ -211,8 +214,14 @@ PdfDocumentResult PdfDocumentLoader::load(QByteArrayView data) {
 
     // 6. Object loading
     PdfIndirectObjectLoader objectLoader;
-    auto loadResult = objectLoader.load(reader, xrefResult.table, result.document.store);
+    auto loadResult = objectLoader.load(reader, xrefResult.table,
+                                         result.document.store,
+                                         &result.document.streamStore);
     result.document.objectLoaderWarning = loadResult.warning;
+    result.document.streamLoadedCount = loadResult.streamLoadedCount;
+    result.document.streamFailureCount = loadResult.streamFailureCount;
+    result.document.duplicateStreamCount = loadResult.duplicateStreamCount;
+    result.document.unsupportedStreamCount = loadResult.unsupportedStreamCount;
 
     if (loadResult.inUseEntries > 0 && loadResult.loadedCount == 0) {
         result.warning = PdfDocumentLoaderWarning::ObjectLoadFailure;

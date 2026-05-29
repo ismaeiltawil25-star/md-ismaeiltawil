@@ -1,5 +1,7 @@
 #include <QtTest/QTest>
 #include "PdfDocumentLoader.h"
+#include "PdfPageContentStreamResolver.h"
+#include "PdfStreamDecoder.h"
 
 class PdfDocumentLoaderTest : public QObject {
     Q_OBJECT
@@ -10,6 +12,7 @@ private:
     QByteArray buildStreamObjectPdf();
     QByteArray buildMalformedXrefPdf();
     QByteArray buildPageTreeCountMismatchPdf();
+    QByteArray buildPdfWithPageContentsStream();
 
 private slots:
     void testLoadMinimalOnePage();
@@ -32,6 +35,19 @@ private slots:
     void testLoadPageTreeCountMismatchNonFatal();
     void testLoadWithStreamObject();
     void testLoadObjectLoadFatal();
+
+    void testLoadStreamIntoDocument();
+    void testLoadStreamBodyBytesMatch();
+    void testLoadStreamDictionaryInObjectStore();
+    void testLoadDocumentWithoutStreams();
+    void testLoadMultipleStreams();
+    void testLoadStreamFailureDoesNotBlockDocument();
+    void testLoadEncryptedDocumentStreamStore();
+    void testLoadStreamCountersPopulated();
+    void testLoadStreamBodyViewValidAfterLoad();
+    void testLoadStreamBodyViewValidAfterDocumentCopy();
+    void testLoadStreamBodyViewValidAfterDocumentMove();
+    void testEndToEndPageContentResolver();
 };
 
 QByteArray PdfDocumentLoaderTest::buildMinimalPdf(int pageCount) {
@@ -323,8 +339,8 @@ void PdfDocumentLoaderTest::testLoadWithStreamObject() {
     auto r = PdfDocumentLoader().load(data);
     QVERIFY(r.ok());
     QCOMPARE(r.document.pageCount(), 1);
-    // Stream objects should produce UnsupportedStream in object loader
-    QCOMPARE(r.document.objectLoaderWarning, PdfIndirectObjectLoaderWarning::UnsupportedStream);
+    // Stream objects are now loaded into streamStore
+    QVERIFY(r.document.streamStore.contains(4, 0));
 }
 
 void PdfDocumentLoaderTest::testLoadObjectLoadFatal() {
@@ -337,6 +353,174 @@ void PdfDocumentLoaderTest::testLoadObjectLoadFatal() {
     data += "startxref\n" + QByteArray::number(xo) + "\n%%EOF\n";
     auto r = PdfDocumentLoader().load(data);
     QCOMPARE(r.warning, PdfDocumentLoaderWarning::ObjectLoadFailure);
+}
+
+QByteArray PdfDocumentLoaderTest::buildPdfWithPageContentsStream() {
+    // PDF with page /Contents referencing a stream object (obj 4) with the text "BT ET"
+    QByteArray pdf;
+    pdf += "%PDF-1.7\n";
+    pdf += "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
+    pdf += "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
+    pdf += "3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>\nendobj\n";
+    pdf += "4 0 obj\n<< /Length 5 >>\nstream\nBT ET\nendstream\nendobj\n";
+
+    qsizetype xrefOffset = pdf.size();
+    pdf += "xref\n0 5\n0000000000 65535 f \n";
+
+    auto compute = [&](int n) {
+        qsizetype p = pdf.indexOf(QByteArray::number(n) + " 0 obj");
+        return QString("%1").arg(p, 10, 10, QLatin1Char('0')).toUtf8();
+    };
+    pdf += compute(1) + " 00000 n\n";
+    pdf += compute(2) + " 00000 n\n";
+    pdf += compute(3) + " 00000 n\n";
+    pdf += compute(4) + " 00000 n\n";
+
+    pdf += "trailer\n<< /Size 5 /Root 1 0 R >>\n";
+    pdf += "startxref\n" + QByteArray::number(xrefOffset) + "\n%%EOF\n";
+    return pdf;
+}
+
+void PdfDocumentLoaderTest::testLoadStreamIntoDocument() {
+    auto data = buildPdfWithPageContentsStream();
+    auto r = PdfDocumentLoader().load(data);
+    QVERIFY(r.ok());
+    QVERIFY(r.document.streamStore.contains(4, 0));
+    const auto *rs = r.document.streamStore.get(4, 0);
+    QVERIFY(rs != nullptr);
+    QCOMPARE(rs->rawBody, QByteArrayView("BT ET"));
+}
+
+void PdfDocumentLoaderTest::testLoadStreamBodyBytesMatch() {
+    auto data = buildPdfWithPageContentsStream();
+    auto r = PdfDocumentLoader().load(data);
+    const auto *rs = r.document.streamStore.get(4, 0);
+    QCOMPARE(rs->rawBody.size(), qsizetype(5));
+    QCOMPARE(rs->rawBody, QByteArrayView("BT ET"));
+}
+
+void PdfDocumentLoaderTest::testLoadStreamDictionaryInObjectStore() {
+    auto data = buildPdfWithPageContentsStream();
+    auto r = PdfDocumentLoader().load(data);
+    auto resolved = r.document.store.resolve(4, 0);
+    QVERIFY(resolved.found());
+    QCOMPARE(resolved.object->kind, PdfObjectKind::Dictionary);
+}
+
+void PdfDocumentLoaderTest::testLoadDocumentWithoutStreams() {
+    auto data = buildMinimalPdf(1);
+    auto r = PdfDocumentLoader().load(data);
+    QVERIFY(r.ok());
+    QVERIFY(r.document.streamStore.isEmpty());
+    QCOMPARE(r.document.streamLoadedCount, 0);
+    QCOMPARE(r.document.streamFailureCount, 0);
+}
+
+void PdfDocumentLoaderTest::testLoadMultipleStreams() {
+    QByteArray pdf;
+    pdf += "%PDF-1.7\n";
+    pdf += "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
+    pdf += "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
+    pdf += "3 0 obj\n<< /Type /Page /Parent 2 0 R >>\nendobj\n";
+    pdf += "4 0 obj\n<< /Length 5 >>\nstream\nAAAAA\nendstream\nendobj\n";
+    pdf += "5 0 obj\n<< /Length 3 >>\nstream\nBBB\nendstream\nendobj\n";
+
+    qsizetype xrefOffset = pdf.size();
+    pdf += "xref\n0 6\n0000000000 65535 f \n";
+    auto compute = [&](int n) {
+        qsizetype p = pdf.indexOf(QByteArray::number(n) + " 0 obj");
+        return QString("%1").arg(p, 10, 10, QLatin1Char('0')).toUtf8();
+    };
+    for (int i = 1; i <= 5; ++i) pdf += compute(i) + " 00000 n\n";
+    pdf += "trailer\n<< /Size 6 /Root 1 0 R >>\n";
+    pdf += "startxref\n" + QByteArray::number(xrefOffset) + "\n%%EOF\n";
+
+    auto r = PdfDocumentLoader().load(pdf);
+    QVERIFY(r.ok());
+    QCOMPARE(r.document.streamLoadedCount, 2);
+    QVERIFY(r.document.streamStore.contains(4, 0));
+    QVERIFY(r.document.streamStore.contains(5, 0));
+    QCOMPARE(r.document.streamStore.get(4, 0)->rawBody, QByteArrayView("AAAAA"));
+    QCOMPARE(r.document.streamStore.get(5, 0)->rawBody, QByteArrayView("BBB"));
+}
+
+void PdfDocumentLoaderTest::testLoadStreamFailureDoesNotBlockDocument() {
+    // Stream with missing body (Length says 999 but only 5 bytes exist)
+    QByteArray pdf;
+    pdf += "%PDF-1.7\n";
+    pdf += "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
+    pdf += "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
+    pdf += "3 0 obj\n<< /Type /Page /Parent 2 0 R >>\nendobj\n";
+    pdf += "4 0 obj\n<< /Length 999 >>\nstream\nAAAAA\nendstream\nendobj\n";
+
+    qsizetype xrefOffset = pdf.size();
+    pdf += "xref\n0 5\n0000000000 65535 f \n";
+    auto compute = [&](int n) {
+        qsizetype p = pdf.indexOf(QByteArray::number(n) + " 0 obj");
+        return QString("%1").arg(p, 10, 10, QLatin1Char('0')).toUtf8();
+    };
+    for (int i = 1; i <= 4; ++i) pdf += compute(i) + " 00000 n\n";
+    pdf += "trailer\n<< /Size 5 /Root 1 0 R >>\n";
+    pdf += "startxref\n" + QByteArray::number(xrefOffset) + "\n%%EOF\n";
+
+    auto r = PdfDocumentLoader().load(pdf);
+    QVERIFY(r.ok());
+    QCOMPARE(r.document.streamFailureCount, 1);
+    QVERIFY(r.document.store.resolve(4, 0).found());
+}
+
+void PdfDocumentLoaderTest::testLoadEncryptedDocumentStreamStore() {
+    auto data = buildEncryptedPdf();
+    auto r = PdfDocumentLoader().load(data);
+    QCOMPARE(r.warning, PdfDocumentLoaderWarning::EncryptedUnsupported);
+    QVERIFY(r.document.streamStore.isEmpty());
+}
+
+void PdfDocumentLoaderTest::testLoadStreamCountersPopulated() {
+    auto data = buildPdfWithPageContentsStream();
+    auto r = PdfDocumentLoader().load(data);
+    QCOMPARE(r.document.streamLoadedCount, 1);
+    QCOMPARE(r.document.streamFailureCount, 0);
+    QCOMPARE(r.document.duplicateStreamCount, 0);
+    QCOMPARE(r.document.unsupportedStreamCount, 0);
+}
+
+void PdfDocumentLoaderTest::testLoadStreamBodyViewValidAfterLoad() {
+    auto data = buildPdfWithPageContentsStream();
+    auto r = PdfDocumentLoader().load(data);
+    const auto *rs = r.document.streamStore.get(4, 0);
+    QCOMPARE(rs->rawBody, QByteArrayView("BT ET"));
+}
+
+void PdfDocumentLoaderTest::testLoadStreamBodyViewValidAfterDocumentCopy() {
+    auto data = buildPdfWithPageContentsStream();
+    auto r = PdfDocumentLoader().load(data);
+    PdfDocument copy = r.document;
+    r = PdfDocumentResult{}; // overwrite original
+    const auto *rs = copy.streamStore.get(4, 0);
+    QVERIFY(rs != nullptr);
+    QCOMPARE(rs->rawBody, QByteArrayView("BT ET"));
+}
+
+void PdfDocumentLoaderTest::testLoadStreamBodyViewValidAfterDocumentMove() {
+    auto data = buildPdfWithPageContentsStream();
+    auto r = PdfDocumentLoader().load(data);
+    PdfDocument moved = std::move(r.document);
+    const auto *rs = moved.streamStore.get(4, 0);
+    QVERIFY(rs != nullptr);
+    QCOMPARE(rs->rawBody, QByteArrayView("BT ET"));
+}
+
+void PdfDocumentLoaderTest::testEndToEndPageContentResolver() {
+    auto data = buildPdfWithPageContentsStream();
+    auto r = PdfDocumentLoader().load(data);
+    QVERIFY(r.ok());
+
+    PdfStreamDecoder decoder;
+    PdfPageContentStreamResolver resolver(r.document.store, r.document.streamStore, decoder);
+    auto cr = resolver.resolve(r.document.pageTree, 0);
+    QVERIFY(cr.ok());
+    QCOMPARE(cr.contentBytes, QByteArray("BT ET"));
 }
 
 QTEST_MAIN(PdfDocumentLoaderTest)
