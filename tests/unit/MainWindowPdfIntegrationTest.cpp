@@ -108,6 +108,7 @@ void MainWindowPdfIntegrationTest::testOpenPdfDocumentCreatesPdfTab() {
     auto *pw = qobject_cast<PdfSinglePagePreviewWidget *>(sa->widget());
     QVERIFY(pw != nullptr);
     QVERIFY(!pw->image().isNull());
+    QVERIFY(pw->size() == pw->sizeHint());
 }
 
 void MainWindowPdfIntegrationTest::testOpenPdfDocumentInvalidPdfShowsStatus() {
@@ -188,6 +189,7 @@ void MainWindowPdfIntegrationTest::testOpenTextOnlyPdf() {
     QVERIFY(pw != nullptr);
     QVERIFY(!pw->image().isNull());
     QVERIFY(countNonBg(pw->image()) > 0);
+    QVERIFY(pw->size() == pw->sizeHint());
 }
 
 void MainWindowPdfIntegrationTest::testOpenBlankPdf() {

@@ -504,10 +504,12 @@ void MainWindow::openPdfDocument(const QString &path)
     auto *previewWidget = new PdfSinglePagePreviewWidget;
     scrollArea->setWidget(previewWidget);
 
-    if (!result.image.isNull())
+    if (!result.image.isNull()) {
         previewWidget->setImage(result.image);
-    else
+        previewWidget->resize(previewWidget->sizeHint());
+    } else {
         previewWidget->setStatusText(result.diagnosticSummary);
+    }
 
     int index = m_tabWidget->addTab(scrollArea, QFileInfo(path).fileName());
     m_tabWidget->setTabToolTip(index, absPath);
