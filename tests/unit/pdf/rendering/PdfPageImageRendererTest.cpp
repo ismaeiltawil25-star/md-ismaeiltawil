@@ -57,6 +57,12 @@ private slots:
     void testRenderPageInvalidSettings();
     void testRenderPageImageOwnsPixels();
     void testRenderPageEndToEndFromDocumentLoader();
+
+    void testRenderPagePathOnlyBehaviorUnchanged();
+    void testRenderPageTextDiagnosticsPreserved();
+    void testRenderPageNoPathsAllTextSkippedIsNotNone();
+    void testRenderPageTextOnlyEndToEnd();
+    void testRenderPageTextNonFatalWhenPathsExist();
 };
 
 void PdfPageImageRendererTest::testRenderPageBlankPage() {
@@ -65,6 +71,7 @@ void PdfPageImageRendererTest::testRenderPageBlankPage() {
     auto res = r.renderPage(doc, 0);
     QCOMPARE(res.warning, PdfPageImageRenderWarning::NoRenderablePaths);
     QVERIFY(res.ok()); QVERIFY(!res.image.isNull());
+    QCOMPARE(res.textRenderResult.warning, PdfBasicTextRenderWarning::NoTextRuns);
 }
 void PdfPageImageRendererTest::testRenderPageSimplePath() {
     auto doc = buildDoc("0 0 m 100 100 l S", false, " /MediaBox [0 0 612 792]");
@@ -77,8 +84,11 @@ void PdfPageImageRendererTest::testRenderPageTextOnly() {
     auto doc = buildDoc("BT /F1 12 Tf (Hello) Tj ET", false, " /MediaBox [0 0 612 792]");
     PdfStreamDecoder d; PdfPageImageRenderer r(d);
     auto res = r.renderPage(doc, 0);
-    QCOMPARE(res.warning, PdfPageImageRenderWarning::NoRenderablePaths);
+    QCOMPARE(res.warning, PdfPageImageRenderWarning::None);
     QVERIFY(res.ok());
+    QVERIFY(!res.image.isNull());
+    QVERIFY(res.textRenderResult.runsRendered > 0);
+    QVERIFY(countBg(res.image) > 0);
 }
 void PdfPageImageRendererTest::testRenderPageMixedTextAndPath() {
     auto doc = buildDoc("BT /F1 12 Tf (X) Tj ET 0 0 m 100 100 l S", false, " /MediaBox [0 0 612 792]");
@@ -86,6 +96,7 @@ void PdfPageImageRendererTest::testRenderPageMixedTextAndPath() {
     auto res = r.renderPage(doc, 0);
     QCOMPARE(res.warning, PdfPageImageRenderWarning::None);
     QCOMPARE(countBg(res.image) > 0, true);
+    QVERIFY(res.textRenderResult.runsRendered > 0);
 }
 void PdfPageImageRendererTest::testRenderPageInvalidPageIndex() {
     auto doc = buildDoc("", false, " /MediaBox [0 0 612 792]");
@@ -156,6 +167,55 @@ void PdfPageImageRendererTest::testRenderPageEndToEndFromDocumentLoader() {
     auto res = r.renderPage(doc, 0);
     QCOMPARE(res.warning, PdfPageImageRenderWarning::None);
     QCOMPARE(countBg(res.image) > 0, true);
+}
+
+void PdfPageImageRendererTest::testRenderPagePathOnlyBehaviorUnchanged() {
+    auto doc = buildDoc("0 0 m 100 100 l S", false, " /MediaBox [0 0 612 792]");
+    PdfStreamDecoder d; PdfPageImageRenderer r(d);
+    auto res = r.renderPage(doc, 0);
+    QCOMPARE(res.warning, PdfPageImageRenderWarning::None);
+    QCOMPARE(res.pathResult.warning, PdfPathRenderWarning::None);
+    QCOMPARE(res.textRenderResult.warning, PdfBasicTextRenderWarning::NoTextRuns);
+    QVERIFY(countBg(res.image) > 0);
+}
+
+void PdfPageImageRendererTest::testRenderPageTextDiagnosticsPreserved() {
+    auto doc = buildDoc("BT /F1 12 Tf <FEFF0048> Tj ET", false, " /MediaBox [0 0 612 792]");
+    PdfStreamDecoder d; PdfPageImageRenderer r(d);
+    auto res = r.renderPage(doc, 0);
+    QCOMPARE(res.textRenderResult.warning, PdfBasicTextRenderWarning::SkippedRun);
+    QVERIFY(!res.textRenderResult.diagnostics.isEmpty());
+    QVERIFY(!res.image.isNull());
+}
+
+void PdfPageImageRendererTest::testRenderPageNoPathsAllTextSkippedIsNotNone() {
+    auto doc = buildDoc("BT /F1 0 Tf (Hello) Tj ET", false, " /MediaBox [0 0 612 792]");
+    PdfStreamDecoder d; PdfPageImageRenderer r(d);
+    auto res = r.renderPage(doc, 0);
+    QCOMPARE(res.warning, PdfPageImageRenderWarning::NoRenderablePaths);
+    QCOMPARE(res.textRenderResult.runsRendered, 0);
+    QVERIFY(res.ok());
+}
+
+void PdfPageImageRendererTest::testRenderPageTextOnlyEndToEnd() {
+    auto doc = buildDoc("BT /F1 12 Tf (Hello) Tj ET", false, " /MediaBox [0 0 612 792]");
+    PdfStreamDecoder d; PdfPageImageRenderer r(d);
+    auto res = r.renderPage(doc, 0);
+    QCOMPARE(res.warning, PdfPageImageRenderWarning::None);
+    QVERIFY(res.textRenderResult.runsRendered > 0);
+    QVERIFY(countBg(res.image) > 0);
+    QVERIFY(res.ok());
+}
+
+void PdfPageImageRendererTest::testRenderPageTextNonFatalWhenPathsExist() {
+    auto doc = buildDoc("0 0 m 100 100 l S BT /F1 12 Tf <FEFF0048> Tj ET",
+                         false, " /MediaBox [0 0 612 792]");
+    PdfStreamDecoder d; PdfPageImageRenderer r(d);
+    auto res = r.renderPage(doc, 0);
+    QCOMPARE(res.warning, PdfPageImageRenderWarning::None);
+    QCOMPARE(res.textRenderResult.warning, PdfBasicTextRenderWarning::SkippedRun);
+    QVERIFY(!res.textRenderResult.diagnostics.isEmpty());
+    QVERIFY(countBg(res.image) > 0);
 }
 
 QTEST_MAIN(PdfPageImageRendererTest)

@@ -21,6 +21,19 @@ PdfPageImageRenderResult PdfPageImageRenderer::renderPage(
     if (result.planResult.plan.geometry.visibleBox.isValid()) {
         PdfBasicPathRenderer pathRenderer;
         result.pathResult = pathRenderer.render(result.planResult.plan, settings);
+
+        if (!result.pathResult.image.isNull()) {
+            QPainter painter(&result.pathResult.image);
+            if (painter.isActive()) {
+                PdfBasicTextRenderer textRenderer;
+                result.textRenderResult = textRenderer.render(
+                    painter, result.planResult.plan, settings);
+            } else {
+                result.textRenderResult.warning = PdfBasicTextRenderWarning::InvalidSettings;
+                result.textRenderResult.diagnosticSummary
+                    = QStringLiteral("QPainter not active");
+            }
+        }
     }
 
     // Determine warning
@@ -28,7 +41,8 @@ PdfPageImageRenderResult PdfPageImageRenderer::renderPage(
         result.warning = PdfPageImageRenderWarning::PathRenderFailure;
     else if (!result.planResult.ok())
         result.warning = PdfPageImageRenderWarning::PlanBuildFailure;
-    else if (result.pathResult.warning == PdfPathRenderWarning::NoPaths)
+    else if (result.pathResult.warning == PdfPathRenderWarning::NoPaths
+             && result.textRenderResult.runsRendered == 0)
         result.warning = PdfPageImageRenderWarning::NoRenderablePaths;
 
     // Copy image data
@@ -42,6 +56,8 @@ PdfPageImageRenderResult PdfPageImageRenderer::renderPage(
         parts.append(QStringLiteral("Plan: %1").arg(result.planResult.diagnosticSummary));
     if (result.pathResult.diagnosticSummary.size())
         parts.append(QStringLiteral("Render: %1").arg(result.pathResult.diagnosticSummary));
+    if (result.textRenderResult.diagnosticSummary.size())
+        parts.append(QStringLiteral("Text: %1").arg(result.textRenderResult.diagnosticSummary));
     result.diagnosticSummary = parts.join(QStringLiteral("; "));
 
     return result;

@@ -2,6 +2,7 @@
 
 #include "PdfPageRenderPlanBuilder.h"
 #include "PdfBasicPathRenderer.h"
+#include "PdfBasicTextRenderer.h"
 #include "PdfStreamDecoder.h"
 #include <QImage>
 #include <QString>
@@ -20,6 +21,7 @@ struct PdfPageImageRenderResult {
 
     PdfPageRenderPlanResult planResult;
     PdfPathRenderResult pathResult;
+    PdfBasicTextRenderResult textRenderResult;
 
     PdfPageImageRenderWarning warning = PdfPageImageRenderWarning::None;
     QString diagnosticSummary;
