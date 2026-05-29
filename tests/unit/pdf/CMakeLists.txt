@@ -29,3 +29,7 @@ add_test(NAME PdfTrailerParserTest COMMAND PdfTrailerParserTest)
 add_executable(PdfIndirectObjectLoaderTest PdfIndirectObjectLoaderTest.cpp)
 target_link_libraries(PdfIndirectObjectLoaderTest PRIVATE pdf_core Qt6::Test)
 add_test(NAME PdfIndirectObjectLoaderTest COMMAND PdfIndirectObjectLoaderTest)
+
+add_executable(PdfCatalogResolverTest PdfCatalogResolverTest.cpp)
+target_link_libraries(PdfCatalogResolverTest PRIVATE pdf_core Qt6::Test)
+add_test(NAME PdfCatalogResolverTest COMMAND PdfCatalogResolverTest)
