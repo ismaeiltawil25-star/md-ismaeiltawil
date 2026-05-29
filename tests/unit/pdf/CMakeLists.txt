@@ -69,3 +69,11 @@ add_test(NAME PdfContentStreamTokenizerTest COMMAND PdfContentStreamTokenizerTes
 add_executable(PdfContentStreamInterpreterTest PdfContentStreamInterpreterTest.cpp)
 target_link_libraries(PdfContentStreamInterpreterTest PRIVATE pdf_core Qt6::Test)
 add_test(NAME PdfContentStreamInterpreterTest COMMAND PdfContentStreamInterpreterTest)
+
+add_executable(PdfMatrixTest PdfMatrixTest.cpp)
+target_link_libraries(PdfMatrixTest PRIVATE pdf_core Qt6::Test)
+add_test(NAME PdfMatrixTest COMMAND PdfMatrixTest)
+
+add_executable(PdfGraphicsStateTrackerTest PdfGraphicsStateTrackerTest.cpp)
+target_link_libraries(PdfGraphicsStateTrackerTest PRIVATE pdf_core Qt6::Test)
+add_test(NAME PdfGraphicsStateTrackerTest COMMAND PdfGraphicsStateTrackerTest)
