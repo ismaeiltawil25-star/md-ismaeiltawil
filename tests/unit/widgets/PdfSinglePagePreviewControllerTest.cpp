@@ -1,5 +1,6 @@
 #include <QtTest/QTest>
 #include <QtZlib/zlib.h>
+#include <QSignalSpy>
 #include "PdfSinglePagePreviewController.h"
 #include "PdfDocumentLoader.h"
 
@@ -45,6 +46,13 @@ private slots:
     void testControllerPlanFailureWithFallbackImage();
     void testControllerPlanFailureNoImage();
     void testControllerDestroyedWidgetDoesNotCrash();
+
+    void testZoomInIncreasesFactorAndResizes();
+    void testZoomOutDecreasesFactorAndResizes();
+    void testZoomResetReturnsToOne();
+    void testZoomChangedSignalEmitted();
+    void testZoomToClampsToBounds();
+    void testZoomNullWidgetDoesNotCrash();
 };
 
 void PdfSinglePagePreviewControllerTest::testControllerRendersSimplePath() {
@@ -146,6 +154,72 @@ void PdfSinglePagePreviewControllerTest::testControllerDestroyedWidgetDoesNotCra
     delete w;
     auto r = ctrl.renderDocumentPage(doc, 0);
     QCOMPARE(r.warning, PdfPageImageRenderWarning::None);
+}
+
+void PdfSinglePagePreviewControllerTest::testZoomInIncreasesFactorAndResizes() {
+    auto doc = buildDoc("0 0 m 100 100 l S", false, " /MediaBox [0 0 612 792]");
+    PdfSinglePagePreviewWidget w;
+    PdfSinglePagePreviewController ctrl(&w);
+    ctrl.renderDocumentPage(doc, 0);
+    QVERIFY(!w.image().isNull());
+    QVERIFY(qFuzzyCompare(w.zoomFactor(), 1.0));
+    ctrl.zoomIn();
+    QVERIFY(w.zoomFactor() > 1.0);
+    QCOMPARE(w.size(), w.sizeHint());
+}
+
+void PdfSinglePagePreviewControllerTest::testZoomOutDecreasesFactorAndResizes() {
+    auto doc = buildDoc("0 0 m 100 100 l S", false, " /MediaBox [0 0 612 792]");
+    PdfSinglePagePreviewWidget w;
+    PdfSinglePagePreviewController ctrl(&w);
+    ctrl.renderDocumentPage(doc, 0);
+    ctrl.zoomIn(); ctrl.zoomIn(); // 1.0 -> 1.25 -> 1.5625
+    QVERIFY(w.zoomFactor() > 1.5);
+    ctrl.zoomOut();
+    QVERIFY(w.zoomFactor() < 1.5);
+    QCOMPARE(w.size(), w.sizeHint());
+}
+
+void PdfSinglePagePreviewControllerTest::testZoomResetReturnsToOne() {
+    auto doc = buildDoc("0 0 m 100 100 l S", false, " /MediaBox [0 0 612 792]");
+    PdfSinglePagePreviewWidget w;
+    PdfSinglePagePreviewController ctrl(&w);
+    ctrl.renderDocumentPage(doc, 0);
+    ctrl.zoomIn(); ctrl.zoomIn();
+    QVERIFY(!qFuzzyCompare(w.zoomFactor(), 1.0));
+    ctrl.zoomReset();
+    QVERIFY(qFuzzyCompare(w.zoomFactor(), 1.0));
+    QCOMPARE(w.size(), w.sizeHint());
+}
+
+void PdfSinglePagePreviewControllerTest::testZoomChangedSignalEmitted() {
+    PdfSinglePagePreviewWidget w;
+    PdfSinglePagePreviewController ctrl(&w);
+    QSignalSpy spy(&ctrl, &PdfSinglePagePreviewController::zoomChanged);
+    ctrl.zoomIn();
+    QCOMPARE(spy.count(), 1);
+    // no-op on same factor via internal guard
+    ctrl.zoomIn();
+    QCOMPARE(spy.count(), 2); // factor changes each time, so 2 emits
+}
+
+void PdfSinglePagePreviewControllerTest::testZoomToClampsToBounds() {
+    PdfSinglePagePreviewWidget w;
+    PdfSinglePagePreviewController ctrl(&w);
+    ctrl.zoomTo(0.01);
+    QVERIFY(qFuzzyCompare(w.zoomFactor(), PdfSinglePagePreviewWidget::MinZoom));
+    ctrl.zoomTo(100.0);
+    QVERIFY(qFuzzyCompare(w.zoomFactor(), PdfSinglePagePreviewWidget::MaxZoom));
+    QCOMPARE(w.size(), w.sizeHint());
+}
+
+void PdfSinglePagePreviewControllerTest::testZoomNullWidgetDoesNotCrash() {
+    PdfSinglePagePreviewController ctrl(nullptr);
+    ctrl.zoomIn();
+    ctrl.zoomOut();
+    ctrl.zoomReset();
+    ctrl.zoomTo(2.0);
+    // Must not crash
 }
 
 QTEST_MAIN(PdfSinglePagePreviewControllerTest)

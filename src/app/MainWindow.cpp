@@ -14,6 +14,7 @@
 #include <QMimeData>
 #include <QSettings>
 #include <QScrollBar>
+#include <QVBoxLayout>
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QTabWidget>
@@ -28,6 +29,8 @@
 
 #include "PdfFilePreviewService.h"
 #include "PdfSinglePagePreviewWidget.h"
+#include "PdfSinglePagePreviewController.h"
+#include "PdfZoomToolbar.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -494,24 +497,48 @@ void MainWindow::openPdfDocument(const QString &path)
     PdfFilePreviewService service;
     auto result = service.renderFilePage(absPath);
 
+    auto *container = new QWidget;
+    auto *containerLayout = new QVBoxLayout(container);
+    containerLayout->setContentsMargins(0, 0, 0, 0);
+    containerLayout->setSpacing(2);
+
+    auto *toolbar = new PdfZoomToolbar;
+    containerLayout->addWidget(toolbar);
+
     auto *scrollArea = new QScrollArea;
     scrollArea->setWidgetResizable(false);
     scrollArea->setAlignment(Qt::AlignCenter);
-    scrollArea->setProperty("absoluteFilePath", absPath);
-    scrollArea->setProperty("contentType", "pdf");
-    scrollArea->setProperty("recentEligible", result.ok());
+    containerLayout->addWidget(scrollArea);
+
+    container->setProperty("absoluteFilePath", absPath);
+    container->setProperty("contentType", "pdf");
+    container->setProperty("recentEligible", result.ok());
 
     auto *previewWidget = new PdfSinglePagePreviewWidget;
     scrollArea->setWidget(previewWidget);
+
+    auto *controller = new PdfSinglePagePreviewController(previewWidget, container);
+
+    QObject::connect(toolbar, &PdfZoomToolbar::zoomInRequested,
+                     controller, &PdfSinglePagePreviewController::zoomIn);
+    QObject::connect(toolbar, &PdfZoomToolbar::zoomOutRequested,
+                     controller, &PdfSinglePagePreviewController::zoomOut);
+    QObject::connect(toolbar, &PdfZoomToolbar::zoomResetRequested,
+                     controller, &PdfSinglePagePreviewController::zoomReset);
+    QObject::connect(controller, &PdfSinglePagePreviewController::zoomChanged,
+                     toolbar, &PdfZoomToolbar::setZoom);
 
     if (!result.image.isNull()) {
         previewWidget->setImage(result.image);
         previewWidget->resize(previewWidget->sizeHint());
     } else {
         previewWidget->setStatusText(result.diagnosticSummary);
+        toolbar->setEnabled(false);
     }
 
-    int index = m_tabWidget->addTab(scrollArea, QFileInfo(path).fileName());
+    toolbar->setZoom(previewWidget->zoomFactor());
+
+    int index = m_tabWidget->addTab(container, QFileInfo(path).fileName());
     m_tabWidget->setTabToolTip(index, absPath);
     m_tabWidget->setCurrentIndex(index);
     updateEmptyState();

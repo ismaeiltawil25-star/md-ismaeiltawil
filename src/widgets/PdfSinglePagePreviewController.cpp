@@ -46,6 +46,39 @@ PdfPageImageRenderResult PdfSinglePagePreviewController::renderDocumentPage(
     return result;
 }
 
+void PdfSinglePagePreviewController::applyZoom(double factor) {
+    if (!m_widget) return;
+    double clamped = qBound(PdfSinglePagePreviewWidget::MinZoom,
+                            factor,
+                            PdfSinglePagePreviewWidget::MaxZoom);
+    if (qFuzzyCompare(clamped, m_widget->zoomFactor())) return;
+    m_widget->setZoomFactor(clamped);
+    m_widget->resize(m_widget->sizeHint());
+    emit zoomChanged(m_widget->zoomFactor());
+}
+
+void PdfSinglePagePreviewController::zoomIn() {
+    if (!m_widget) return;
+    applyZoom(m_widget->zoomFactor() * 1.25);
+}
+
+void PdfSinglePagePreviewController::zoomOut() {
+    if (!m_widget) return;
+    applyZoom(m_widget->zoomFactor() / 1.25);
+}
+
+void PdfSinglePagePreviewController::zoomReset() {
+    applyZoom(1.0);
+}
+
+void PdfSinglePagePreviewController::zoomTo(double factor) {
+    applyZoom(factor);
+}
+
+double PdfSinglePagePreviewController::zoomFactor() const {
+    return m_widget ? m_widget->zoomFactor() : 1.0;
+}
+
 void PdfSinglePagePreviewController::clear() {
     if (m_widget)
         m_widget->clear();

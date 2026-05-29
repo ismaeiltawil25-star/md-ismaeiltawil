@@ -6,6 +6,7 @@
 #include <QApplication>
 #include "app/MainWindow.h"
 #include "widgets/PdfSinglePagePreviewWidget.h"
+#include "widgets/PdfZoomToolbar.h"
 
 static QByteArray buildPdf(const QByteArray &content = "",
     QByteArray pageExtra = " /MediaBox [0 0 612 792]") {
@@ -70,6 +71,8 @@ private slots:
     void testOpenTextOnlyPdf();
     void testOpenBlankPdf();
     void testOpenMixedPathTextPdfDisplaysBoth();
+    void testPdfTabContainsZoomToolbarAndZoomWorks();
+    void testInvalidPdfTabHasToolbarDisabled();
     void testOpenPdfDoesNotAffectMarkdownTab();
     void testOpenPdfDoesNotBreakSubsequentMarkdownOpen();
 };
@@ -103,7 +106,7 @@ void MainWindowPdfIntegrationTest::testOpenPdfDocumentCreatesPdfTab() {
     QWidget *tab = tabs->widget(0);
     QCOMPARE(tab->property("contentType").toString(), QString("pdf"));
 
-    auto *sa = qobject_cast<QScrollArea *>(tab);
+    auto *sa = tab->findChild<QScrollArea *>();
     QVERIFY(sa != nullptr);
     auto *pw = qobject_cast<PdfSinglePagePreviewWidget *>(sa->widget());
     QVERIFY(pw != nullptr);
@@ -123,7 +126,7 @@ void MainWindowPdfIntegrationTest::testOpenPdfDocumentInvalidPdfShowsStatus() {
     QVERIFY2(tabs->count() >= 1, "A diagnostic tab should be created for invalid PDF");
     if (tabs->count() == 0) return;
     QWidget *tab = tabs->widget(0);
-    auto *sa = qobject_cast<QScrollArea *>(tab);
+    auto *sa = tab->findChild<QScrollArea *>();
     QVERIFY(sa != nullptr);
     auto *pw = qobject_cast<PdfSinglePagePreviewWidget *>(sa->widget());
     QVERIFY(pw != nullptr);
@@ -185,7 +188,7 @@ void MainWindowPdfIntegrationTest::testOpenTextOnlyPdf() {
     QWidget *tab = tabs->widget(0);
     QCOMPARE(tab->property("contentType").toString(), QString("pdf"));
     auto *pw = qobject_cast<PdfSinglePagePreviewWidget *>(
-        qobject_cast<QScrollArea *>(tab)->widget());
+        tab->findChild<QScrollArea *>()->widget());
     QVERIFY(pw != nullptr);
     QVERIFY(!pw->image().isNull());
     QVERIFY(countNonBg(pw->image()) > 0);
@@ -206,7 +209,7 @@ void MainWindowPdfIntegrationTest::testOpenBlankPdf() {
     QWidget *tab = tabs->widget(0);
     QCOMPARE(tab->property("contentType").toString(), QString("pdf"));
     auto *pw = qobject_cast<PdfSinglePagePreviewWidget *>(
-        qobject_cast<QScrollArea *>(tab)->widget());
+        tab->findChild<QScrollArea *>()->widget());
     QVERIFY(pw != nullptr);
     QVERIFY(!pw->image().isNull());
 }
@@ -226,7 +229,7 @@ void MainWindowPdfIntegrationTest::testOpenMixedPathTextPdfDisplaysBoth() {
     QWidget *tab = tabs->widget(0);
     QCOMPARE(tab->property("contentType").toString(), QString("pdf"));
     auto *pw = qobject_cast<PdfSinglePagePreviewWidget *>(
-        qobject_cast<QScrollArea *>(tab)->widget());
+        tab->findChild<QScrollArea *>()->widget());
     QVERIFY(pw != nullptr);
     QVERIFY(!pw->image().isNull());
     QVERIFY(countNonBg(pw->image()) > 0);
@@ -264,6 +267,65 @@ void MainWindowPdfIntegrationTest::testOpenPdfDoesNotBreakSubsequentMarkdownOpen
     w.openDocumentsFromPaths({mdPath});
     QCOMPARE(tabs->count(), 2);
     QVERIFY(qobject_cast<DocumentTabPage *>(tabs->widget(1)) != nullptr);
+}
+
+void MainWindowPdfIntegrationTest::testPdfTabContainsZoomToolbarAndZoomWorks() {
+    MainWindow w;
+    w.show();
+    QTabWidget *tabs = findTabWidget(w);
+    QVERIFY(tabs != nullptr);
+
+    QString path = createPdfFile(buildPdf("0 0 m 100 100 l S"));
+    w.openDocumentsFromPaths({path});
+
+    QVERIFY(tabs->count() >= 1);
+    QWidget *tab = tabs->widget(0);
+    QCOMPARE(tab->property("contentType").toString(), QString("pdf"));
+
+    auto *toolbar = tab->findChild<PdfZoomToolbar *>();
+    QVERIFY(toolbar != nullptr);
+    QVERIFY(toolbar->isEnabled());
+
+    auto *inBtn = toolbar->findChild<QPushButton *>("pdfZoomInButton");
+    auto *outBtn = toolbar->findChild<QPushButton *>("pdfZoomOutButton");
+    auto *rstBtn = toolbar->findChild<QPushButton *>("pdfZoomResetButton");
+    QVERIFY(inBtn != nullptr);
+    QVERIFY(outBtn != nullptr);
+    QVERIFY(rstBtn != nullptr);
+
+    auto *pw = tab->findChild<PdfSinglePagePreviewWidget *>();
+    QVERIFY(pw != nullptr);
+    QVERIFY(!pw->image().isNull());
+    QVERIFY(qFuzzyCompare(pw->zoomFactor(), 1.0));
+    QVERIFY(pw->size() == pw->sizeHint());
+
+    // Click zoom in
+    QTest::mouseClick(inBtn, Qt::LeftButton);
+    QVERIFY(pw->zoomFactor() > 1.0);
+    QVERIFY(pw->size() == pw->sizeHint());
+    QCOMPARE(rstBtn->text(), QString("125 %"));
+}
+
+void MainWindowPdfIntegrationTest::testInvalidPdfTabHasToolbarDisabled() {
+    MainWindow w;
+    w.show();
+    QTabWidget *tabs = findTabWidget(w);
+    QVERIFY(tabs != nullptr);
+
+    QString path = createPdfFile("not a pdf");
+    w.openDocumentsFromPaths({path});
+
+    QVERIFY(tabs->count() >= 1);
+    QWidget *tab = tabs->widget(0);
+    QCOMPARE(tab->property("contentType").toString(), QString("pdf"));
+
+    auto *toolbar = tab->findChild<PdfZoomToolbar *>();
+    QVERIFY(toolbar != nullptr);
+    QVERIFY(!toolbar->isEnabled());
+
+    auto *pw = tab->findChild<PdfSinglePagePreviewWidget *>();
+    QVERIFY(pw != nullptr);
+    QVERIFY(!pw->statusText().isEmpty());
 }
 
 QTEST_MAIN(MainWindowPdfIntegrationTest)

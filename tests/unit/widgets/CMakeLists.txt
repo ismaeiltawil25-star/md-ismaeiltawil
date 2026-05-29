@@ -5,3 +5,7 @@ add_test(NAME PdfSinglePagePreviewWidgetTest COMMAND PdfSinglePagePreviewWidgetT
 add_executable(PdfSinglePagePreviewControllerTest PdfSinglePagePreviewControllerTest.cpp)
 target_link_libraries(PdfSinglePagePreviewControllerTest PRIVATE pdf_widgets Qt6::Test Qt6::ZlibPrivate)
 add_test(NAME PdfSinglePagePreviewControllerTest COMMAND PdfSinglePagePreviewControllerTest)
+
+add_executable(PdfZoomToolbarTest PdfZoomToolbarTest.cpp)
+target_link_libraries(PdfZoomToolbarTest PRIVATE pdf_widgets Qt6::Test)
+add_test(NAME PdfZoomToolbarTest COMMAND PdfZoomToolbarTest)

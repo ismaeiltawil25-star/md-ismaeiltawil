@@ -17,9 +17,19 @@ public:
                                                 int pageIndex,
                                                 const PdfPathRenderSettings &settings = {});
 
+    void zoomIn();
+    void zoomOut();
+    void zoomReset();
+    void zoomTo(double factor);
+    double zoomFactor() const;
+
     void clear();
 
+signals:
+    void zoomChanged(double factor);
+
 private:
+    void applyZoom(double factor);
     QPointer<PdfSinglePagePreviewWidget> m_widget;
     PdfStreamDecoder m_decoder;
 };
