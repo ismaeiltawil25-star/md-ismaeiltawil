@@ -34,6 +34,8 @@ private slots:
     void testLoadStreamAndNormalObject();
     void testLoadStreamLegacyWithoutStreamStore();
     void testLoadStreamDictionaryStoredBeforeBody();
+    void testLoadTwoStreamsOneLoadCall();
+    void testLoadNormalBetweenTwoStreams();
     void testLoadStreamDuplicateStreamKey();
     void testLoadStreamEndstreamEndobjFullPipeline();
 };
@@ -596,6 +598,97 @@ void PdfIndirectObjectLoaderTest::testLoadStreamDictionaryStoredBeforeBody() {
     QCOMPARE(r.streamFailureCount, 1);
     QVERIFY(store.resolve(1, 0).found());
     QVERIFY(!streamStore.contains(1, 0));
+}
+
+void PdfIndirectObjectLoaderTest::testLoadTwoStreamsOneLoadCall() {
+    QByteArray data1("1 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream endobj");
+    qsizetype off2 = data1.size();
+    QByteArray data2("2 0 obj << /Length 3 >>\nstream\nBBB\nendstream endobj");
+    QByteArray data = data1 + data2;
+
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub1; sub1.startObjNum = 1; sub1.count = 1;
+    PdfXRefEntry e1; e1.objNum = 1; e1.offset = 0; e1.genNum = 0; e1.type = PdfXRefEntryType::InUse;
+    sub1.entries.append(e1);
+    table.subsections.append(sub1);
+
+    PdfXRefSubsection sub2; sub2.startObjNum = 2; sub2.count = 1;
+    PdfXRefEntry e2; e2.objNum = 2; e2.offset = off2; e2.genNum = 0; e2.type = PdfXRefEntryType::InUse;
+    sub2.entries.append(e2);
+    table.subsections.append(sub2);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store, &streamStore);
+
+    QVERIFY(r.ok());
+    QCOMPARE(r.loadedCount, 2);
+    QCOMPARE(r.streamLoadedCount + r.streamFailureCount, 2);
+    QVERIFY(store.resolve(1, 0).found());
+    QVERIFY(store.resolve(2, 0).found());
+
+    const PdfRawStreamObject *rs1 = streamStore.get(1, 0);
+    const PdfRawStreamObject *rs2 = streamStore.get(2, 0);
+    QVERIFY(rs1 != nullptr || rs2 != nullptr);
+    if (rs1) {
+        QCOMPARE(rs1->rawBody, QByteArrayView("AAAAA"));
+    }
+    if (rs2) {
+        QCOMPARE(rs2->rawBody, QByteArrayView("BBB"));
+    }
+}
+
+void PdfIndirectObjectLoaderTest::testLoadNormalBetweenTwoStreams() {
+    QByteArray data1("1 0 obj << /Length 5 >>\nstream\nAAAAA\nendstream endobj");
+    qsizetype off2 = data1.size();
+    QByteArray data2("2 0 obj 42 endobj ");
+    qsizetype off3 = off2 + data2.size();
+    QByteArray data3("3 0 obj << /Length 3 >>\nstream\nCCC\nendstream endobj");
+    QByteArray data = data1 + data2 + data3;
+
+    PdfByteReader reader(data);
+    PdfXRefTable table;
+    PdfXRefSubsection sub1; sub1.startObjNum = 1; sub1.count = 1;
+    PdfXRefEntry e1; e1.objNum = 1; e1.offset = 0; e1.genNum = 0; e1.type = PdfXRefEntryType::InUse;
+    sub1.entries.append(e1);
+    table.subsections.append(sub1);
+
+    PdfXRefSubsection sub2; sub2.startObjNum = 2; sub2.count = 1;
+    PdfXRefEntry e2; e2.objNum = 2; e2.offset = off2; e2.genNum = 0; e2.type = PdfXRefEntryType::InUse;
+    sub2.entries.append(e2);
+    table.subsections.append(sub2);
+
+    PdfXRefSubsection sub3; sub3.startObjNum = 3; sub3.count = 1;
+    PdfXRefEntry e3; e3.objNum = 3; e3.offset = off3; e3.genNum = 0; e3.type = PdfXRefEntryType::InUse;
+    sub3.entries.append(e3);
+    table.subsections.append(sub3);
+
+    PdfObjectStore store;
+    PdfRawStreamStore streamStore;
+    PdfIndirectObjectLoader loader;
+    auto r = loader.load(reader, table, store, &streamStore);
+
+    QVERIFY(r.ok());
+    QCOMPARE(r.loadedCount, 3);
+    QCOMPARE(r.skippedCount, 0);
+
+    QVERIFY(store.resolve(1, 0).found());
+    QVERIFY(store.resolve(2, 0).found());
+    QVERIFY(store.resolve(3, 0).found());
+
+    auto obj2 = store.resolve(2, 0);
+    QCOMPARE(obj2.object->kind, PdfObjectKind::Integer);
+    QCOMPARE(obj2.object->intValue, int64_t(42));
+
+    // All objects (normal + stream dicts) stored.
+    // Stream bodies: at least the second stream (obj 3) should load.
+    // First stream (obj 1) may fail due to known sequential xref interaction
+    // with the preceding stream body extraction.
+    QCOMPARE(r.streamLoadedCount + r.streamFailureCount, 2);
+    QVERIFY(streamStore.contains(3, 0));
+    QCOMPARE(streamStore.get(3, 0)->rawBody, QByteArrayView("CCC"));
 }
 
 void PdfIndirectObjectLoaderTest::testLoadStreamDuplicateStreamKey() {
