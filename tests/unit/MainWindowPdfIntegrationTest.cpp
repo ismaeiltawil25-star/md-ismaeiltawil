@@ -33,6 +33,16 @@ static QString createPdfFile(const QByteArray &content) {
     return path;
 }
 
+static QString createMarkdownFile() {
+    static QTemporaryDir dir;
+    QString path = dir.filePath("test.md");
+    QFile f(path);
+    f.open(QIODevice::WriteOnly);
+    f.write("# Hello\n\nMarkdown content");
+    f.close();
+    return path;
+}
+
 class MainWindowPdfIntegrationTest : public QObject {
     Q_OBJECT
 
@@ -41,12 +51,18 @@ private:
 
 private slots:
     void initTestCase();
+
     void testIsSupportedFileAcceptsPdf();
     void testOpenPdfDocumentCreatesPdfTab();
     void testOpenPdfDocumentInvalidPdfShowsStatus();
     void testOpenDuplicatePdfFocusesExistingTab();
     void testPdfTabCloseRestoresPlaceholder();
     void testMarkdownOpenFlowUnchanged();
+
+    void testOpenTextOnlyPdf();
+    void testOpenBlankPdf();
+    void testOpenPdfDoesNotAffectMarkdownTab();
+    void testOpenPdfDoesNotBreakSubsequentMarkdownOpen();
 };
 
 QTabWidget *MainWindowPdfIntegrationTest::findTabWidget(MainWindow &w) const {
@@ -136,18 +152,80 @@ void MainWindowPdfIntegrationTest::testMarkdownOpenFlowUnchanged() {
     QTabWidget *tabs = findTabWidget(w);
     QVERIFY(tabs != nullptr);
 
-    QTemporaryDir dir;
-    QString mdPath = dir.filePath("test.md");
-    QFile f(mdPath);
-    f.open(QIODevice::WriteOnly);
-    f.write("# Hello\n\nMarkdown content");
-    f.close();
+    QString mdPath = createMarkdownFile();
     w.openDocumentsFromPaths({mdPath});
 
     QVERIFY2(tabs->count() >= 1, "A Markdown tab should be created");
     if (tabs->count() == 0) return;
     auto *dtp = qobject_cast<DocumentTabPage *>(tabs->widget(0));
     QVERIFY(dtp != nullptr);
+}
+
+void MainWindowPdfIntegrationTest::testOpenTextOnlyPdf() {
+    MainWindow w;
+    w.show();
+    QTabWidget *tabs = findTabWidget(w);
+    QVERIFY(tabs != nullptr);
+
+    QString path = createPdfFile(buildPdf("BT /F1 12 Tf (Hello) Tj ET"));
+    w.openDocumentsFromPaths({path});
+
+    QVERIFY2(tabs->count() >= 1, "A PDF tab should be created for text-only PDF");
+    if (tabs->count() == 0) return;
+    QWidget *tab = tabs->widget(0);
+    QCOMPARE(tab->property("contentType").toString(), QString("pdf"));
+    auto *pw = qobject_cast<PdfSinglePagePreviewWidget *>(
+        qobject_cast<QScrollArea *>(tab)->widget());
+    QVERIFY(pw != nullptr);
+}
+
+void MainWindowPdfIntegrationTest::testOpenBlankPdf() {
+    MainWindow w;
+    w.show();
+    QTabWidget *tabs = findTabWidget(w);
+    QVERIFY(tabs != nullptr);
+
+    QString path = createPdfFile(buildPdf(""));
+    w.openDocumentsFromPaths({path});
+
+    QVERIFY2(tabs->count() >= 1, "A PDF tab should be created for blank PDF");
+    if (tabs->count() == 0) return;
+    QWidget *tab = tabs->widget(0);
+    QCOMPARE(tab->property("contentType").toString(), QString("pdf"));
+}
+
+void MainWindowPdfIntegrationTest::testOpenPdfDoesNotAffectMarkdownTab() {
+    MainWindow w;
+    w.show();
+    QTabWidget *tabs = findTabWidget(w);
+    QVERIFY(tabs != nullptr);
+
+    QString mdPath = createMarkdownFile();
+    w.openDocumentsFromPaths({mdPath});
+    QCOMPARE(tabs->count(), 1);
+    QVERIFY(qobject_cast<DocumentTabPage *>(tabs->widget(0)) != nullptr);
+
+    QString pdfPath = createPdfFile(buildPdf("0 0 m 100 100 l S"));
+    w.openDocumentsFromPaths({pdfPath});
+    QCOMPARE(tabs->count(), 2);
+    QVERIFY(qobject_cast<DocumentTabPage *>(tabs->widget(0)) != nullptr);
+}
+
+void MainWindowPdfIntegrationTest::testOpenPdfDoesNotBreakSubsequentMarkdownOpen() {
+    MainWindow w;
+    w.show();
+    QTabWidget *tabs = findTabWidget(w);
+    QVERIFY(tabs != nullptr);
+
+    QString pdfPath = createPdfFile(buildPdf("0 0 m 100 100 l S"));
+    w.openDocumentsFromPaths({pdfPath});
+    QCOMPARE(tabs->count(), 1);
+    QCOMPARE(tabs->widget(0)->property("contentType").toString(), QString("pdf"));
+
+    QString mdPath = createMarkdownFile();
+    w.openDocumentsFromPaths({mdPath});
+    QCOMPARE(tabs->count(), 2);
+    QVERIFY(qobject_cast<DocumentTabPage *>(tabs->widget(1)) != nullptr);
 }
 
 QTEST_MAIN(MainWindowPdfIntegrationTest)
