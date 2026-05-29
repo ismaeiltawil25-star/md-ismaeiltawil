@@ -77,3 +77,7 @@ add_test(NAME PdfMatrixTest COMMAND PdfMatrixTest)
 add_executable(PdfGraphicsStateTrackerTest PdfGraphicsStateTrackerTest.cpp)
 target_link_libraries(PdfGraphicsStateTrackerTest PRIVATE pdf_core Qt6::Test)
 add_test(NAME PdfGraphicsStateTrackerTest COMMAND PdfGraphicsStateTrackerTest)
+
+add_executable(PdfPathRecorderTest PdfPathRecorderTest.cpp)
+target_link_libraries(PdfPathRecorderTest PRIVATE pdf_core Qt6::Test)
+add_test(NAME PdfPathRecorderTest COMMAND PdfPathRecorderTest)
