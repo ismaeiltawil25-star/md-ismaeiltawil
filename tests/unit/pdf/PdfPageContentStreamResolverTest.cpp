@@ -1,20 +1,6 @@
 #include <QtTest/QTest>
-#include <QtZlib/zlib.h>
 #include "PdfPageContentStreamResolver.h"
-
-static QByteArray zlibCompress(const QByteArray &input) {
-    uLongf bound = compressBound(static_cast<uLongf>(input.size()));
-    QByteArray compressed(static_cast<qsizetype>(bound), '\0');
-    uLongf destLen = bound;
-    int ret = compress2(
-        reinterpret_cast<Bytef*>(compressed.data()), &destLen,
-        reinterpret_cast<const Bytef*>(input.constData()),
-        static_cast<uLongf>(input.size()),
-        Z_DEFAULT_COMPRESSION);
-    if (ret != Z_OK) return {};
-    compressed.resize(static_cast<qsizetype>(destLen));
-    return compressed;
-}
+#include "PdfZlibTestHelpers.h"
 
 static PdfObjectPtr makeDict(std::initializer_list<std::pair<const char *, PdfObjectPtr>> entries) {
     auto dict = QSharedPointer<PdfDictionary>::create();
@@ -65,7 +51,7 @@ private slots:
 
 void PdfPageContentStreamResolverTest::testResolveSingleStream() {
     QByteArray orig("BT /F1 12 Tf (Hello) Tj ET");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     PdfObjectStore objStore;
@@ -94,8 +80,8 @@ void PdfPageContentStreamResolverTest::testResolveSingleStream() {
 void PdfPageContentStreamResolverTest::testResolveArrayOfTwoStreams() {
     QByteArray part1("BT /F1 12 Tf ");
     QByteArray part2("(Hello) Tj ET");
-    QByteArray c1 = zlibCompress(part1);
-    QByteArray c2 = zlibCompress(part2);
+    QByteArray c1 = PdfTestHelpers::zlibCompress(part1);
+    QByteArray c2 = PdfTestHelpers::zlibCompress(part2);
     QVERIFY(!c1.isEmpty() && !c2.isEmpty());
 
     PdfObjectStore objStore;
@@ -127,8 +113,8 @@ void PdfPageContentStreamResolverTest::testResolveArrayOfTwoStreams() {
 void PdfPageContentStreamResolverTest::testResolveArrayPreservesOrder() {
     QByteArray first("first");
     QByteArray second("second");
-    QByteArray c1 = zlibCompress(first);
-    QByteArray c2 = zlibCompress(second);
+    QByteArray c1 = PdfTestHelpers::zlibCompress(first);
+    QByteArray c2 = PdfTestHelpers::zlibCompress(second);
     QVERIFY(!c1.isEmpty() && !c2.isEmpty());
 
     PdfObjectStore objStore;
@@ -454,7 +440,7 @@ void PdfPageContentStreamResolverTest::testResolveInvalidContentsEntry() {
 
 void PdfPageContentStreamResolverTest::testResolveArrayFailWholePage() {
     QByteArray part1("BT ET");
-    QByteArray c1 = zlibCompress(part1);
+    QByteArray c1 = PdfTestHelpers::zlibCompress(part1);
     QVERIFY(!c1.isEmpty());
 
     PdfObjectStore objStore;
@@ -488,7 +474,7 @@ void PdfPageContentStreamResolverTest::testResolveArrayFailWholePage() {
 
 void PdfPageContentStreamResolverTest::testResolvePageIndexAndRef() {
     QByteArray orig("content");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     PdfObjectStore objStore;

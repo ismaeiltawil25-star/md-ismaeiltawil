@@ -7,32 +7,7 @@
 #include "app/MainWindow.h"
 #include "widgets/PdfSinglePagePreviewWidget.h"
 #include "widgets/PdfZoomToolbar.h"
-
-static QByteArray buildPdf(const QByteArray &content = "",
-    QByteArray pageExtra = " /MediaBox [0 0 612 792]") {
-    QByteArray pdf;
-    pdf += "%PDF-1.7\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
-    pdf += "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
-    pdf += "3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R" + pageExtra + " >>\nendobj\n";
-    pdf += "4 0 obj\n<< /Length " + QByteArray::number(content.size())
-        + " >>\nstream\n" + content + "\nendstream\nendobj\n";
-    qsizetype xo = pdf.size(); pdf += "xref\n0 5\n0000000000 65535 f \n";
-    auto c = [&](int n){auto p=pdf.indexOf(QByteArray::number(n)+" 0 obj");
-        return QString("%1").arg(p,10,10,QLatin1Char('0')).toUtf8()+" 00000 n\n";};
-    pdf+=c(1)+c(2)+c(3)+c(4);
-    pdf+="trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n"+QByteArray::number(xo)+"\n%%EOF\n";
-    return pdf;
-}
-
-static QString createPdfFile(const QByteArray &content) {
-    static QTemporaryDir dir;
-    QString path = dir.filePath("test.pdf");
-    QFile f(path);
-    f.open(QIODevice::WriteOnly);
-    f.write(content);
-    f.close();
-    return path;
-}
+#include "PdfTestHelpers.h"
 
 static QString createMarkdownFile() {
     static QTemporaryDir dir;
@@ -44,12 +19,12 @@ static QString createMarkdownFile() {
     return path;
 }
 
-static int countNonBg(const QImage &img) {
-    int n = 0; QRgb bg = Qt::white;
-    for (int y = 0; y < img.height(); ++y)
-        for (int x = 0; x < img.width(); ++x)
-            if (img.pixel(x, y) != bg) ++n;
-    return n;
+static QTemporaryDir s_pdfDir;
+static QString createValidPdf(const QByteArray &bytes) {
+    return PdfTestHelpers::writePdfFile(s_pdfDir, "test.pdf", bytes);
+}
+static QString createInvalidPdf(const QByteArray &bytes) {
+    return PdfTestHelpers::writeBytesFile(s_pdfDir, "not.pdf", bytes);
 }
 
 class MainWindowPdfIntegrationTest : public QObject {
@@ -98,7 +73,7 @@ void MainWindowPdfIntegrationTest::testOpenPdfDocumentCreatesPdfTab() {
     QTabWidget *tabs = findTabWidget(w);
     QVERIFY(tabs != nullptr);
 
-    QString path = createPdfFile(buildPdf("0 0 m 100 100 l S"));
+    QString path = createValidPdf(PdfTestHelpers::buildMinimalPdfBytes("0 0 m 100 100 l S"));
     w.openDocumentsFromPaths({path});
 
     QVERIFY2(tabs->count() >= 1, "A PDF tab should have been created");
@@ -120,7 +95,7 @@ void MainWindowPdfIntegrationTest::testOpenPdfDocumentInvalidPdfShowsStatus() {
     QTabWidget *tabs = findTabWidget(w);
     QVERIFY(tabs != nullptr);
 
-    QString path = createPdfFile("not a pdf");
+    QString path = createInvalidPdf("not a pdf");
     w.openDocumentsFromPaths({path});
 
     QVERIFY2(tabs->count() >= 1, "A diagnostic tab should be created for invalid PDF");
@@ -139,7 +114,7 @@ void MainWindowPdfIntegrationTest::testOpenDuplicatePdfFocusesExistingTab() {
     QTabWidget *tabs = findTabWidget(w);
     QVERIFY(tabs != nullptr);
 
-    QString path = createPdfFile(buildPdf("0 0 m 100 100 l S"));
+    QString path = createValidPdf(PdfTestHelpers::buildMinimalPdfBytes("0 0 m 100 100 l S"));
     w.openDocumentsFromPaths({path});
     QCOMPARE(tabs->count(), 1);
     w.openDocumentsFromPaths({path});
@@ -152,7 +127,7 @@ void MainWindowPdfIntegrationTest::testPdfTabCloseRestoresPlaceholder() {
     QTabWidget *tabs = findTabWidget(w);
     QVERIFY(tabs != nullptr);
 
-    QString path = createPdfFile(buildPdf("0 0 m 100 100 l S"));
+    QString path = createValidPdf(PdfTestHelpers::buildMinimalPdfBytes("0 0 m 100 100 l S"));
     w.openDocumentsFromPaths({path});
     QCOMPARE(tabs->count(), 1);
     tabs->removeTab(0);
@@ -180,7 +155,7 @@ void MainWindowPdfIntegrationTest::testOpenTextOnlyPdf() {
     QTabWidget *tabs = findTabWidget(w);
     QVERIFY(tabs != nullptr);
 
-    QString path = createPdfFile(buildPdf("BT /F1 12 Tf (Hello) Tj ET"));
+    QString path = createValidPdf(PdfTestHelpers::buildMinimalPdfBytes("BT /F1 12 Tf (Hello) Tj ET"));
     w.openDocumentsFromPaths({path});
 
     QVERIFY2(tabs->count() >= 1, "A PDF tab should be created for text-only PDF");
@@ -191,7 +166,7 @@ void MainWindowPdfIntegrationTest::testOpenTextOnlyPdf() {
         tab->findChild<QScrollArea *>()->widget());
     QVERIFY(pw != nullptr);
     QVERIFY(!pw->image().isNull());
-    QVERIFY(countNonBg(pw->image()) > 0);
+    QVERIFY(PdfTestHelpers::countNonBgPixels(pw->image()) > 0);
     QVERIFY(pw->size() == pw->sizeHint());
 }
 
@@ -201,7 +176,7 @@ void MainWindowPdfIntegrationTest::testOpenBlankPdf() {
     QTabWidget *tabs = findTabWidget(w);
     QVERIFY(tabs != nullptr);
 
-    QString path = createPdfFile(buildPdf(""));
+    QString path = createValidPdf(PdfTestHelpers::buildMinimalPdfBytes(""));
     w.openDocumentsFromPaths({path});
 
     QVERIFY2(tabs->count() >= 1, "A PDF tab should be created for blank PDF");
@@ -220,7 +195,7 @@ void MainWindowPdfIntegrationTest::testOpenMixedPathTextPdfDisplaysBoth() {
     QTabWidget *tabs = findTabWidget(w);
     QVERIFY(tabs != nullptr);
 
-    QString path = createPdfFile(buildPdf(
+    QString path = createValidPdf(PdfTestHelpers::buildMinimalPdfBytes(
         "0 0 m 100 100 l S BT /F1 12 Tf (Hello) Tj ET"));
     w.openDocumentsFromPaths({path});
 
@@ -232,7 +207,7 @@ void MainWindowPdfIntegrationTest::testOpenMixedPathTextPdfDisplaysBoth() {
         tab->findChild<QScrollArea *>()->widget());
     QVERIFY(pw != nullptr);
     QVERIFY(!pw->image().isNull());
-    QVERIFY(countNonBg(pw->image()) > 0);
+    QVERIFY(PdfTestHelpers::countNonBgPixels(pw->image()) > 0);
 }
 
 void MainWindowPdfIntegrationTest::testOpenPdfDoesNotAffectMarkdownTab() {
@@ -246,7 +221,7 @@ void MainWindowPdfIntegrationTest::testOpenPdfDoesNotAffectMarkdownTab() {
     QCOMPARE(tabs->count(), 1);
     QVERIFY(qobject_cast<DocumentTabPage *>(tabs->widget(0)) != nullptr);
 
-    QString pdfPath = createPdfFile(buildPdf("0 0 m 100 100 l S"));
+    QString pdfPath = createValidPdf(PdfTestHelpers::buildMinimalPdfBytes("0 0 m 100 100 l S"));
     w.openDocumentsFromPaths({pdfPath});
     QCOMPARE(tabs->count(), 2);
     QVERIFY(qobject_cast<DocumentTabPage *>(tabs->widget(0)) != nullptr);
@@ -258,7 +233,7 @@ void MainWindowPdfIntegrationTest::testOpenPdfDoesNotBreakSubsequentMarkdownOpen
     QTabWidget *tabs = findTabWidget(w);
     QVERIFY(tabs != nullptr);
 
-    QString pdfPath = createPdfFile(buildPdf("0 0 m 100 100 l S"));
+    QString pdfPath = createValidPdf(PdfTestHelpers::buildMinimalPdfBytes("0 0 m 100 100 l S"));
     w.openDocumentsFromPaths({pdfPath});
     QCOMPARE(tabs->count(), 1);
     QCOMPARE(tabs->widget(0)->property("contentType").toString(), QString("pdf"));
@@ -275,7 +250,7 @@ void MainWindowPdfIntegrationTest::testPdfTabContainsZoomToolbarAndZoomWorks() {
     QTabWidget *tabs = findTabWidget(w);
     QVERIFY(tabs != nullptr);
 
-    QString path = createPdfFile(buildPdf("0 0 m 100 100 l S"));
+    QString path = createValidPdf(PdfTestHelpers::buildMinimalPdfBytes("0 0 m 100 100 l S"));
     w.openDocumentsFromPaths({path});
 
     QVERIFY(tabs->count() >= 1);
@@ -312,7 +287,7 @@ void MainWindowPdfIntegrationTest::testInvalidPdfTabHasToolbarDisabled() {
     QTabWidget *tabs = findTabWidget(w);
     QVERIFY(tabs != nullptr);
 
-    QString path = createPdfFile("not a pdf");
+    QString path = createInvalidPdf("not a pdf");
     w.openDocumentsFromPaths({path});
 
     QVERIFY(tabs->count() >= 1);

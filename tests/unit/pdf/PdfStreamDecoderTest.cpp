@@ -1,20 +1,6 @@
 #include <QtTest/QTest>
-#include <QtZlib/zlib.h>
 #include "PdfStreamDecoder.h"
-
-static QByteArray zlibCompress(const QByteArray &input) {
-    uLongf bound = compressBound(static_cast<uLongf>(input.size()));
-    QByteArray compressed(static_cast<qsizetype>(bound), '\0');
-    uLongf destLen = bound;
-    int ret = compress2(
-        reinterpret_cast<Bytef*>(compressed.data()), &destLen,
-        reinterpret_cast<const Bytef*>(input.constData()),
-        static_cast<uLongf>(input.size()),
-        Z_DEFAULT_COMPRESSION);
-    if (ret != Z_OK) return {};
-    compressed.resize(static_cast<qsizetype>(destLen));
-    return compressed;
-}
+#include "PdfZlibTestHelpers.h"
 
 static PdfRawStreamObject makeStream(QByteArrayView rawBody,
                                       const QList<QByteArray> &filters = {},
@@ -108,7 +94,7 @@ void PdfStreamDecoderTest::testDecodeIdentityTooLarge() {
 void PdfStreamDecoderTest::testDecodeFlate() {
     PdfStreamDecoder decoder;
     QByteArray orig("Hello World! Hello PDF stream decoding.");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     auto s = makeStream(QByteArrayView(compressed), {{"FlateDecode"}});
@@ -120,7 +106,7 @@ void PdfStreamDecoderTest::testDecodeFlate() {
 void PdfStreamDecoderTest::testDecodeFlateAliasFl() {
     PdfStreamDecoder decoder;
     QByteArray orig("Alias test data");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     auto s = makeStream(QByteArrayView(compressed), {{"Fl"}});
@@ -149,7 +135,7 @@ void PdfStreamDecoderTest::testDecodeFlateCorrupt() {
 void PdfStreamDecoderTest::testDecodeFlateTrailingBytes() {
     PdfStreamDecoder decoder;
     QByteArray orig("Trailing test");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
     QByteArray withTrailing = compressed + QByteArray("garbage trailing bytes");
 
@@ -163,7 +149,7 @@ void PdfStreamDecoderTest::testDecodeFlateTrailingBytes() {
 
 void PdfStreamDecoderTest::testDecodeFlateWithinLimit() {
     QByteArray orig(20, 'A');
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     PdfStreamDecoder decoder(100);
@@ -175,7 +161,7 @@ void PdfStreamDecoderTest::testDecodeFlateWithinLimit() {
 
 void PdfStreamDecoderTest::testDecodeFlateExceedsLimit() {
     QByteArray orig(20, 'A');
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     PdfStreamDecoder decoder(10);
@@ -187,7 +173,7 @@ void PdfStreamDecoderTest::testDecodeFlateExceedsLimit() {
 
 void PdfStreamDecoderTest::testDecodeFlateExactLimitStreamEnd() {
     QByteArray orig(20, 'A');
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     PdfStreamDecoder decoder(20);
@@ -199,7 +185,7 @@ void PdfStreamDecoderTest::testDecodeFlateExactLimitStreamEnd() {
 
 void PdfStreamDecoderTest::testDecodeFlateExactLimitProbeExtraByte() {
     QByteArray orig(20, 'A');
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     PdfStreamDecoder decoder(19);
@@ -211,7 +197,7 @@ void PdfStreamDecoderTest::testDecodeFlateExactLimitProbeExtraByte() {
 
 void PdfStreamDecoderTest::testDecodeFlateLimitPlusOne() {
     QByteArray orig(20, 'A');
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     PdfStreamDecoder decoder(21);
@@ -223,7 +209,7 @@ void PdfStreamDecoderTest::testDecodeFlateLimitPlusOne() {
 
 void PdfStreamDecoderTest::testDecodeFlateTruncatedAtLimit() {
     QByteArray orig(50, 'A');
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
     // Truncate the compressed data to make it incomplete
     compressed.truncate(compressed.size() / 2);
@@ -237,7 +223,7 @@ void PdfStreamDecoderTest::testDecodeFlateTruncatedAtLimit() {
 
 void PdfStreamDecoderTest::testDecodeFlateZeroLimitNonEmpty() {
     QByteArray orig(20, 'A');
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     PdfStreamDecoder decoder(0);
@@ -286,7 +272,7 @@ void PdfStreamDecoderTest::testDecodeFilterChainIgnoresPredictor() {
 void PdfStreamDecoderTest::testDecodeFilterArraySingleFlate() {
     PdfStreamDecoder decoder;
     QByteArray orig("Single filter array test");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     auto s = makeStream(QByteArrayView(compressed), {{"FlateDecode"}});
@@ -300,7 +286,7 @@ void PdfStreamDecoderTest::testDecodeFilterArraySingleFlate() {
 void PdfStreamDecoderTest::testDecodePredictor1() {
     PdfStreamDecoder decoder;
     QByteArray orig("Predictor1 test");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     auto dp = makeDictObj({{"Predictor", PdfObject::makeInteger(1, 0, 0)}});
@@ -313,7 +299,7 @@ void PdfStreamDecoderTest::testDecodePredictor1() {
 void PdfStreamDecoderTest::testDecodePredictorAbsent() {
     PdfStreamDecoder decoder;
     QByteArray orig("No predictor");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     auto s = makeStream(QByteArrayView(compressed), {{"FlateDecode"}});
@@ -324,7 +310,7 @@ void PdfStreamDecoderTest::testDecodePredictorAbsent() {
 
 void PdfStreamDecoderTest::testDecodePredictor2() {
     PdfStreamDecoder decoder;
-    QByteArray compressed = zlibCompress(QByteArray("x"));
+    QByteArray compressed = PdfTestHelpers::zlibCompress(QByteArray("x"));
     QVERIFY(!compressed.isEmpty());
 
     auto dp = makeDictObj({{"Predictor", PdfObject::makeInteger(2, 0, 0)}});
@@ -336,7 +322,7 @@ void PdfStreamDecoderTest::testDecodePredictor2() {
 
 void PdfStreamDecoderTest::testDecodePredictor0() {
     PdfStreamDecoder decoder;
-    QByteArray compressed = zlibCompress(QByteArray("x"));
+    QByteArray compressed = PdfTestHelpers::zlibCompress(QByteArray("x"));
     QVERIFY(!compressed.isEmpty());
 
     auto dp = makeDictObj({{"Predictor", PdfObject::makeInteger(0, 0, 0)}});
@@ -347,7 +333,7 @@ void PdfStreamDecoderTest::testDecodePredictor0() {
 
 void PdfStreamDecoderTest::testDecodePredictorNegative() {
     PdfStreamDecoder decoder;
-    QByteArray compressed = zlibCompress(QByteArray("x"));
+    QByteArray compressed = PdfTestHelpers::zlibCompress(QByteArray("x"));
     QVERIFY(!compressed.isEmpty());
 
     auto dp = makeDictObj({{"Predictor", PdfObject::makeInteger(-1, 0, 0)}});
@@ -358,7 +344,7 @@ void PdfStreamDecoderTest::testDecodePredictorNegative() {
 
 void PdfStreamDecoderTest::testDecodePredictorName() {
     PdfStreamDecoder decoder;
-    QByteArray compressed = zlibCompress(QByteArray("x"));
+    QByteArray compressed = PdfTestHelpers::zlibCompress(QByteArray("x"));
     QVERIFY(!compressed.isEmpty());
 
     auto dp = makeDictObj({{"Predictor", PdfObject::makeName(QByteArray("Foo"), 0, 0)}});
@@ -372,7 +358,7 @@ void PdfStreamDecoderTest::testDecodePredictorName() {
 void PdfStreamDecoderTest::testDecodeNonDictDecodeParms() {
     PdfStreamDecoder decoder;
     QByteArray orig("Non-dict parms");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     auto dp = PdfObject::makeInteger(42, 0, 0);  // Integer, not a Dictionary
@@ -385,7 +371,7 @@ void PdfStreamDecoderTest::testDecodeNonDictDecodeParms() {
 void PdfStreamDecoderTest::testDecodeNullDecodeParms() {
     PdfStreamDecoder decoder;
     QByteArray orig("Null parms");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     auto dp = PdfObject::makeNull(0, 0);
@@ -418,7 +404,7 @@ void PdfStreamDecoderTest::testDecodeMaxOutputZeroNonEmptyIdentity() {
 void PdfStreamDecoderTest::testDecodeDecodeParmsArraySingular() {
     PdfStreamDecoder decoder;
     QByteArray orig("DP array singular");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     auto inner = makeDictObj({{"Predictor", PdfObject::makeInteger(1, 0, 0)}});
@@ -434,7 +420,7 @@ void PdfStreamDecoderTest::testDecodeDecodeParmsArraySingular() {
 
 void PdfStreamDecoderTest::testDecodeDecodeParmsArrayUnsupportedPredictor() {
     PdfStreamDecoder decoder;
-    QByteArray compressed = zlibCompress(QByteArray("x"));
+    QByteArray compressed = PdfTestHelpers::zlibCompress(QByteArray("x"));
     QVERIFY(!compressed.isEmpty());
 
     auto inner = makeDictObj({{"Predictor", PdfObject::makeInteger(2, 0, 0)}});
@@ -449,7 +435,7 @@ void PdfStreamDecoderTest::testDecodeDecodeParmsArrayUnsupportedPredictor() {
 
 void PdfStreamDecoderTest::testDecodeDecodeParmsArrayMultiElement() {
     PdfStreamDecoder decoder;
-    QByteArray compressed = zlibCompress(QByteArray("x"));
+    QByteArray compressed = PdfTestHelpers::zlibCompress(QByteArray("x"));
     QVERIFY(!compressed.isEmpty());
 
     auto p1 = makeDictObj({{"Predictor", PdfObject::makeInteger(1, 0, 0)}});
@@ -469,7 +455,7 @@ void PdfStreamDecoderTest::testDecodeDecodeParmsArrayMultiElement() {
 void PdfStreamDecoderTest::testDecodeFilterArrayDecodeParmsDict() {
     PdfStreamDecoder decoder;
     QByteArray orig("Filter array dict DP");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     auto dp = makeDictObj({{"Predictor", PdfObject::makeInteger(1, 0, 0)}});
@@ -482,7 +468,7 @@ void PdfStreamDecoderTest::testDecodeFilterArrayDecodeParmsDict() {
 void PdfStreamDecoderTest::testDecodeFilterArrayDecodeParmsArraySingular() {
     PdfStreamDecoder decoder;
     QByteArray orig("Filter array singular DP array");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     auto inner = makeDictObj({{"Predictor", PdfObject::makeInteger(1, 0, 0)}});
@@ -498,7 +484,7 @@ void PdfStreamDecoderTest::testDecodeFilterArrayDecodeParmsArraySingular() {
 
 void PdfStreamDecoderTest::testDecodeFilterArrayDecodeParmsMultiArray() {
     PdfStreamDecoder decoder;
-    QByteArray compressed = zlibCompress(QByteArray("x"));
+    QByteArray compressed = PdfTestHelpers::zlibCompress(QByteArray("x"));
     QVERIFY(!compressed.isEmpty());
 
     auto p1 = makeDictObj({{"Predictor", PdfObject::makeInteger(1, 0, 0)}});
@@ -516,7 +502,7 @@ void PdfStreamDecoderTest::testDecodeFilterArrayDecodeParmsMultiArray() {
 void PdfStreamDecoderTest::testDecodeDecodeParmsAbsentKey() {
     PdfStreamDecoder decoder;
     QByteArray orig("No DP key");
-    QByteArray compressed = zlibCompress(orig);
+    QByteArray compressed = PdfTestHelpers::zlibCompress(orig);
     QVERIFY(!compressed.isEmpty());
 
     auto s = makeStream(QByteArrayView(compressed), {{"FlateDecode"}}, nullptr);

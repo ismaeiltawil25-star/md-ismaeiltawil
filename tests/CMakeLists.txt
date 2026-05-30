@@ -1,6 +1,7 @@
 find_package(Qt6 REQUIRED COMPONENTS Test)
 
 set(TEST_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/data")
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/helpers)
 
 function(add_unit_test name source)
     add_executable(${name} ${source})
@@ -102,3 +103,22 @@ target_link_libraries(DocumentOpenPipelineTest PRIVATE
     md_backpack_core Qt6::Widgets Qt6::Test
 )
 add_test(NAME DocumentOpenPipelineTest COMMAND DocumentOpenPipelineTest)
+
+add_executable(PdfDiagnostic diagnostic/PdfDiagnostic.cpp)
+target_include_directories(PdfDiagnostic PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(PdfDiagnostic PRIVATE
+    pdf_rendering pdf_core Qt6::Core Qt6::Widgets
+)
+
+add_executable(WidgetDisplayDiagnostic diagnostic/WidgetDisplayDiagnostic.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/MainWindow.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/document/DocumentOpenPipeline.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/appearance/ReaderAppearanceDialog.cpp
+)
+target_include_directories(WidgetDisplayDiagnostic PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(WidgetDisplayDiagnostic PRIVATE
+    md_backpack_core md_backpack_appearance
+    pdf_widgets pdf_preview_services pdf_rendering pdf_core
+    Qt6::Widgets Qt6::Test Qt6::Network
+)
