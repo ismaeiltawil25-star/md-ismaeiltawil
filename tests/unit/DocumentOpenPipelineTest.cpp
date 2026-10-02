@@ -1,4 +1,5 @@
 #include <QTest>
+#include <QDir>
 #include <QFileInfo>
 #include <QTemporaryFile>
 #include "app/document/DocumentOpenPipeline.h"
@@ -16,6 +17,8 @@ private slots:
     void testRenderFailureFallsBackToPlainText();
     void testFileNameExtracted();
     void testDiagnosticsPassThroughPipeline();
+    void testGuessedEncodingIsReported();
+    void testUtf8FileHasNoEncodingNotice();
 };
 
 void DocumentOpenPipelineTest::testValidMarkdownReturnsHtml()
@@ -116,6 +119,31 @@ void DocumentOpenPipelineTest::testDiagnosticsPassThroughPipeline()
     // Timing must be non-negative
     for (const auto &diag : result.diagnostics)
         QVERIFY(diag.elapsedMs >= 0);
+}
+
+void DocumentOpenPipelineTest::testGuessedEncodingIsReported()
+{
+    QTemporaryFile tmpFile(QDir::tempPath() + "/pipeline-XXXXXX.md");
+    QVERIFY(tmpFile.open());
+    // "# " + Arabic "hello world" encoded in Windows-1256
+    tmpFile.write(QByteArray("# ") + QByteArray::fromHex("e3d1cdc8c720c8c7e1dac7e1e3"));
+    tmpFile.flush();
+
+    DocumentOpenPipeline pipeline;
+    auto result = pipeline.open(tmpFile.fileName());
+
+    QVERIFY(result.isValid());
+    QVERIFY(result.encodingNotice.contains("Windows-1256"));
+    QVERIFY(result.tabState.originalHtml.contains(QChar(0x0645)));
+}
+
+void DocumentOpenPipelineTest::testUtf8FileHasNoEncodingNotice()
+{
+    DocumentOpenPipeline pipeline;
+    auto result = pipeline.open(QString(TEST_DATA_DIR) + "/sample.md");
+
+    QVERIFY(result.isValid());
+    QVERIFY(result.encodingNotice.isEmpty());
 }
 
 QTEST_MAIN(DocumentOpenPipelineTest)

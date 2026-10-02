@@ -228,7 +228,10 @@ void MainWindow::openDocumentFromPath(const QString &path)
 
     if (result.tabState.contentMode == ContentMode::Html) {
         tabPage->setHtml(result.tabState.originalHtml);
-        statusBar()->showMessage(QString("Opened: %1").arg(path));
+        QString message = QString("Opened: %1").arg(path);
+        if (!result.encodingNotice.isEmpty())
+            message += QString(" (%1)").arg(result.encodingNotice);
+        statusBar()->showMessage(message);
     } else {
         tabPage->setPlainText(result.tabState.originalPlainText);
         statusBar()->showMessage(QString("Rendered with fallback: %1").arg(path));

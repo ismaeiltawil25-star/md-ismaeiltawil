@@ -31,6 +31,8 @@ DocumentOpenResult DocumentOpenPipeline::open(const QString &filePath)
     result.tabState.filePath = fileInfo.absoluteFilePath();
     result.fileName = fileInfo.fileName();
     result.baseUrl = QUrl::fromLocalFile(fileInfo.absolutePath() + '/');
+    if (loadResult.document.encodingGuessed)
+        result.encodingNotice = QStringLiteral("encoding guessed: %1").arg(loadResult.document.encodingName);
 
     if (renderResult.isValid()) {
         result.tabState.contentMode = ContentMode::Html;

@@ -13,6 +13,7 @@ struct DocumentOpenResult
     QString fileName;
     QString errorMessage;
     QString renderWarning;
+    QString encodingNotice; // non-empty when the file encoding was guessed
     QList<StageDiagnostic> diagnostics;
     QUrl baseUrl;
 

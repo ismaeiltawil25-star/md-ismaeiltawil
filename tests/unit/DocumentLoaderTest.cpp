@@ -12,6 +12,8 @@ private slots:
     void testLoadEmpty();
     void testLoadMissing();
     void testLoadTooLarge();
+    void testLoadWindows1256ArabicFile();
+    void testLoadNormalizesLineEndings();
 };
 
 void DocumentLoaderTest::testLoadSample()
@@ -55,6 +57,38 @@ void DocumentLoaderTest::testLoadTooLarge()
 
     QVERIFY(!result.isValid());
     QVERIFY(result.errorMessage.contains("too large"));
+}
+
+void DocumentLoaderTest::testLoadWindows1256ArabicFile()
+{
+    QTemporaryFile tmpFile;
+    QVERIFY(tmpFile.open());
+    // "# " + Arabic "hello world" encoded in Windows-1256
+    tmpFile.write(QByteArray("# ") + QByteArray::fromHex("e3d1cdc8c720c8c7e1dac7e1e3"));
+    tmpFile.flush();
+
+    auto result = DocumentLoader::load(tmpFile.fileName());
+
+    QVERIFY(result.isValid());
+    QCOMPARE(result.document.encodingName, QStringLiteral("Windows-1256"));
+    QVERIFY(result.document.encodingGuessed);
+    QVERIFY(result.document.rawText.contains(QChar(0x0645)));
+    QVERIFY(!result.document.rawText.contains(QChar(0xFFFD)));
+}
+
+void DocumentLoaderTest::testLoadNormalizesLineEndings()
+{
+    QTemporaryFile tmpFile;
+    QVERIFY(tmpFile.open());
+    tmpFile.write("line1\r\nline2\rline3\n");
+    tmpFile.flush();
+
+    auto result = DocumentLoader::load(tmpFile.fileName());
+
+    QVERIFY(result.isValid());
+    QCOMPARE(result.document.rawText, QStringLiteral("line1\nline2\nline3\n"));
+    QCOMPARE(result.document.encodingName, QStringLiteral("UTF-8"));
+    QVERIFY(!result.document.encodingGuessed);
 }
 
 QTEST_MAIN(DocumentLoaderTest)
