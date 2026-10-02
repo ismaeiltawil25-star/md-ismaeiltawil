@@ -22,9 +22,26 @@
     .\deployment\windows\package-windows.ps1
     Packages ./build into ./dist/windows/md-backpack-reader.
 
+    Code signing (optional): with -SignPfx or -SignThumbprint, every .exe/.dll
+    that does not already carry a valid signature (our executable, compiler
+    runtime DLLs) is Authenticode-signed with SHA-256 and timestamped. Files
+    already signed by their vendor (Qt, Microsoft) are left untouched. A
+    signature from a trusted code-signing certificate is what lets Windows
+    Smart App Control and SmartScreen trust the app.
+
 .EXAMPLE
     .\deployment\windows\package-windows.ps1 -BuildDir build-mingw
     Packages a MinGW build folder.
+
+.EXAMPLE
+    .\deployment\windows\package-windows.ps1 -SignPfx C:\keys\codesign.pfx
+    Packages and signs with a certificate file (the password is asked for,
+    or read from the MDBR_SIGN_PFX_PASSWORD environment variable on CI).
+
+.EXAMPLE
+    .\deployment\windows\package-windows.ps1 -SignThumbprint 1A2B3C...
+    Signs with a certificate already installed in the Windows certificate store
+    (e.g. on a USB token / smart card, as most CAs now require).
 #>
 [CmdletBinding()]
 param(
@@ -42,7 +59,25 @@ param(
     [string]$Toolchain = "",
 
     # Skip launching the packaged app as a final check (e.g. on headless CI).
-    [switch]$SkipLaunchTest
+    [switch]$SkipLaunchTest,
+
+    # --- Code signing (optional) ---
+    # A .pfx file containing a code-signing certificate and its private key.
+    [string]$SignPfx = "",
+
+    # Password of the .pfx. If omitted: MDBR_SIGN_PFX_PASSWORD, else a prompt.
+    [SecureString]$SignPfxPassword,
+
+    # Thumbprint of a code-signing certificate in Cert:\CurrentUser\My or Cert:\LocalMachine\My.
+    [string]$SignThumbprint = "",
+
+    # RFC 3161 timestamp server, so signatures stay valid after the certificate
+    # expires. Pass "" to skip timestamping (offline tests only).
+    [string]$TimestampServer = "http://timestamp.digicert.com",
+
+    # Accept signatures from an untrusted certificate (testing the signing
+    # step with a self-signed certificate). Never use for releases.
+    [switch]$AllowUntrustedSignature
 )
 
 $ErrorActionPreference = "Stop"
@@ -61,6 +96,59 @@ function Write-Step([string]$Message) {
 
 $BuildDir = Resolve-RepoPath $BuildDir
 $DistDir  = Resolve-RepoPath $DistDir
+
+# Loads the signing certificate (or returns $null when not signing). Done first,
+# so a wrong password or an unusable certificate fails before any packaging.
+# The .pfx is read into memory only; nothing is installed in a certificate store.
+function Get-SigningCertificate {
+    if ($SignPfx -and $SignThumbprint) { throw "Use either -SignPfx or -SignThumbprint, not both." }
+
+    $cert = $null
+    if ($SignPfx) {
+        $pfxPath = Resolve-RepoPath $SignPfx
+        if (-not (Test-Path -LiteralPath $pfxPath)) { throw "Certificate file not found: $pfxPath" }
+        $password = $SignPfxPassword
+        if (-not $password -and $env:MDBR_SIGN_PFX_PASSWORD) {
+            $password = ConvertTo-SecureString $env:MDBR_SIGN_PFX_PASSWORD -AsPlainText -Force
+        }
+        if (-not $password) { $password = Read-Host "Password for $pfxPath" -AsSecureString }
+        try {
+            $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+                $pfxPath, $password,
+                [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet)
+        } catch {
+            throw "Cannot open $pfxPath (wrong password or not a .pfx file): $($_.Exception.Message)"
+        }
+    } elseif ($SignThumbprint) {
+        $thumb = $SignThumbprint -replace '\s', ''
+        $cert = Get-ChildItem -Path "Cert:\CurrentUser\My\$thumb", "Cert:\LocalMachine\My\$thumb" -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if (-not $cert) { throw "No certificate with thumbprint $thumb in CurrentUser\My or LocalMachine\My." }
+    } else {
+        return $null
+    }
+
+    if (-not $cert.HasPrivateKey) { throw "The certificate has no private key, so it cannot sign." }
+    $codeSigningOid = "1.3.6.1.5.5.7.3.3"
+    $ekus = $cert.Extensions | Where-Object { $_ -is [System.Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension] }
+    if (-not ($ekus.EnhancedKeyUsages | Where-Object { $_.Value -eq $codeSigningOid })) {
+        throw "The certificate is not a code-signing certificate (missing Code Signing usage)."
+    }
+    if ($cert.NotAfter -lt (Get-Date)) { throw "The certificate expired on $($cert.NotAfter)." }
+    return $cert
+}
+
+$SigningCert = Get-SigningCertificate
+
+# On any failure, remove the half-built staging folder; the installed package
+# is only replaced in the last step, so it is never left broken.
+$StageDir = $null
+trap {
+    if ($StageDir -and (Test-Path -LiteralPath $StageDir)) {
+        Remove-Item -LiteralPath $StageDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    break
+}
 
 # --- 1. Detect Qt kit and toolchain from the build -------------------------
 Write-Step "Detecting build configuration"
@@ -144,6 +232,41 @@ if ($Toolchain -eq "msvc") {
     foreach ($dll in "msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll") {
         Copy-Item -LiteralPath (Join-Path $crtDir.FullName $dll) -Destination $StageDir
         Write-Output "  Deployed: $dll"
+    }
+}
+
+# --- 3b. Code signing (optional) -----------------------------------------------
+if ($SigningCert) {
+    Write-Step "Signing binaries"
+    Write-Output "  Certificate: $($SigningCert.Subject) (expires $($SigningCert.NotAfter.ToString('yyyy-MM-dd')))"
+
+    # Sign only what is not already validly signed (Qt and Microsoft DLLs are).
+    $binaries = Get-ChildItem -LiteralPath $StageDir -Recurse -File -Include *.exe, *.dll
+    foreach ($file in $binaries) {
+        if ((Get-AuthenticodeSignature -LiteralPath $file.FullName).Status -eq "Valid") { continue }
+
+        $signArgs = @{
+            LiteralPath   = $file.FullName
+            Certificate   = $SigningCert
+            HashAlgorithm = "SHA256"
+        }
+        if ($TimestampServer) { $signArgs.TimestampServer = $TimestampServer }
+        $null = Set-AuthenticodeSignature @signArgs
+
+        # Verify: a trusted certificate must give "Valid"; a test certificate is
+        # accepted only with -AllowUntrustedSignature, and only if it is ours.
+        $check = Get-AuthenticodeSignature -LiteralPath $file.FullName
+        $isOurs = $check.SignerCertificate -and $check.SignerCertificate.Thumbprint -eq $SigningCert.Thumbprint
+        if ($check.Status -eq "Valid" -and $isOurs) {
+            Write-Output "  Signed: $($file.Name)"
+        } elseif ($AllowUntrustedSignature -and $isOurs) {
+            Write-Output "  Signed (untrusted test certificate, $($check.Status)): $($file.Name)"
+        } else {
+            throw "Signing failed for $($file.Name): $($check.Status) - $($check.StatusMessage)"
+        }
+        if ($TimestampServer -and -not $check.TimeStamperCertificate) {
+            throw "Signing of $($file.Name) has no timestamp; the signature would stop being valid when the certificate expires."
+        }
     }
 }
 

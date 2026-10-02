@@ -53,7 +53,53 @@ The script then:
 **Smart App Control:** if Windows blocks the freshly built executable during
 the launch test, re-run with `-SkipLaunchTest` and start the app manually.
 
-## 3. Run
+## 3. Code signing
+
+Windows **Smart App Control** and **SmartScreen** block or warn about new
+unsigned executables. A signature from a trusted code-signing certificate is
+what makes Windows trust the app. A self-signed certificate is **not** enough:
+Windows rejects it like an unsigned file.
+
+### Signing a package
+
+```powershell
+# Certificate in a .pfx file (password prompted, or $env:MDBR_SIGN_PFX_PASSWORD on CI)
+.\deployment\windows\package-windows.ps1 -SignPfx C:\keys\codesign.pfx
+
+# Certificate in the Windows store or on a USB token / smart card
+.\deployment\windows\package-windows.ps1 -SignThumbprint <certificate thumbprint>
+```
+
+The script:
+- checks the certificate first (private key, Code Signing usage, not expired),
+  before any packaging work;
+- signs **only binaries without a valid signature**: our `.exe` and, for
+  MinGW, the GCC runtime DLLs. Qt's DLLs, signed by The Qt Company, and
+  Microsoft's runtime DLLs are left untouched;
+- uses SHA-256 with an RFC 3161 timestamp (`-TimestampServer`, DigiCert by
+  default), so signatures stay valid after the certificate expires;
+- verifies every signature and stops if any one is not trusted;
+- never installs anything into a certificate store (a `.pfx` is read into memory only).
+
+`-AllowUntrustedSignature` accepts a self-signed test certificate, for testing
+the signing step only. Never use it for releases.
+
+### Getting a certificate
+
+All options require verifying your identity with the certificate authority.
+Compare current prices and country availability before choosing:
+
+| Option | Notes |
+|---|---|
+| Microsoft Trusted Signing (Azure) | Monthly subscription; signing happens in the cloud. Check which countries are supported for individual developers |
+| Certum "Open Source Code Signing" | Lower-cost certificate for open-source developers |
+| SignPath Foundation | Free signing for qualifying open-source projects, done in CI |
+| Commercial CAs (DigiCert, Sectigo, SSL.com...) | OV/EV certificates. Private keys must live on a hardware token or cloud HSM, so use `-SignThumbprint` |
+
+After signing, Windows may still need time to build reputation for a new
+publisher. The signature is the prerequisite, not an instant guarantee.
+
+## 4. Run
 
 ```powershell
 .\dist\windows\md-backpack-reader\md-backpack-reader.exe
