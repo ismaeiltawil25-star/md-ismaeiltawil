@@ -44,41 +44,57 @@ QString HtmlElementWrapper::wrapCodeBlocks(const QString &html)
     return out;
 }
 
-// Wrap each <blockquote> tag with a table+cell
+// Wrap each <blockquote> in a table so QTextDocument can draw the quote bar.
+//
+// Only the outer kMaxBlockquoteTableDepth levels become tables. QTextDocument's
+// nested-table layout cost roughly doubles per level (depth 14 ≈ 0.8 s, depth 20
+// froze the app), so deeper levels keep their plain <blockquote> tags, which Qt
+// renders as a cheap indent. Content is never dropped.
 QString HtmlElementWrapper::wrapBlockquotes(const QString &html)
 {
+    static const QString openTag = QStringLiteral("<blockquote");
+    static const QString closeTag = QStringLiteral("</blockquote>");
+    static const QString tableOpen = QStringLiteral(
+        "<table class=\"blockquote-table\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\">"
+        "<tr>"
+        "<td class=\"blockquote-bar\" width=\"4\"></td>"
+        "<td class=\"blockquote-cell\" width=\"100%\">");
+    static const QString tableClose = QStringLiteral("</td></tr></table>");
+
+    const QStringView view(html);
     QString out;
-    int pos = 0;
+    out.reserve(html.size() + html.size() / 4);
 
-    while (pos < html.size()) {
-        int openIdx = html.indexOf("<blockquote", pos);
-        int closeIdx = html.indexOf("</blockquote>", pos);
+    int depth = 0;
+    qsizetype pos = 0;
+    qsizetype nextOpen = view.indexOf(openTag);
+    qsizetype nextClose = view.indexOf(closeTag);
 
-        if (openIdx < 0 && closeIdx < 0) {
-            out.append(html.mid(pos));
-            break;
-        }
+    while (nextOpen >= 0 || nextClose >= 0) {
+        const bool isClose = nextClose >= 0 && (nextOpen < 0 || nextClose < nextOpen);
 
-        if (closeIdx >= 0 && (openIdx < 0 || closeIdx < openIdx)) {
-            out.append(html.mid(pos, closeIdx - pos));
-            out.append(QStringLiteral("</td></tr></table>"));
-            pos = closeIdx + 13;
+        if (isClose) {
+            out += view.sliced(pos, nextClose - pos);
+            out += depth <= kMaxBlockquoteTableDepth ? QStringView(tableClose) : QStringView(closeTag);
+            if (depth > 0)
+                --depth;
+            pos = nextClose + closeTag.size();
+            nextClose = view.indexOf(closeTag, pos);
         } else {
-            out.append(html.mid(pos, openIdx - pos));
-            int tagEnd = html.indexOf('>', openIdx + 11);
-            if (tagEnd < 0) {
-                out.append(html.mid(openIdx));
+            const qsizetype tagEnd = view.indexOf(u'>', nextOpen + openTag.size());
+            if (tagEnd < 0)
                 break;
-            }
-            out.append(QStringLiteral(
-                "<table class=\"blockquote-table\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\">"
-                "<tr>"
-                "<td class=\"blockquote-bar\" width=\"4\"></td>"
-                "<td class=\"blockquote-cell\" width=\"100%\">"));
+            out += view.sliced(pos, nextOpen - pos);
+            ++depth;
+            out += depth <= kMaxBlockquoteTableDepth
+                ? QStringView(tableOpen)
+                : view.sliced(nextOpen, tagEnd + 1 - nextOpen);
             pos = tagEnd + 1;
+            nextOpen = view.indexOf(openTag, pos);
         }
     }
 
+    out += view.sliced(pos);
     return out;
 }
 

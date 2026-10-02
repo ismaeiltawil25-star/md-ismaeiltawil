@@ -3,6 +3,8 @@
 | Folder | Contents |
 |---|---|
 | `unit/` | QtTest unit tests for Markdown, appearance, document and app layers |
+| `unit/RenderedDocumentContractTest.cpp` | Asserts on the `QTextDocument` the reader shows (strike-out, links, RTL, no lost content) |
+| `unit/RenderRobustnessTest.cpp` | Seeded fuzzing, pathological inputs and time budgets (catches freezes) |
 | `unit/pdf/` | Custom PDF engine tests (parser, content streams, rendering) |
 | `unit/widgets/`, `unit/services/` | PDF preview widget and service tests |
 | `helpers/` | Shared header-only helpers for building test PDFs |

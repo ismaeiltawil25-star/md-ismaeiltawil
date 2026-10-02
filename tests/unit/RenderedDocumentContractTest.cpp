@@ -4,6 +4,7 @@
 // HTML string. If a renderer change emits HTML that QTextDocument does not
 // understand, these tests fail even when string-level tests still pass.
 
+#include <QElapsedTimer>
 #include <QTest>
 #include <QTextBlock>
 #include <QTextCursor>
@@ -47,6 +48,9 @@ private slots:
     void nestedDivKeepsContentOrder();
     void definitionListThenParagraphRendersMarkdown();
     void fencedCodeIsShownVerbatim();
+    void deepNestingLaysOutQuickly_data();
+    void deepNestingLaysOutQuickly();
+    void shallowQuotesKeepTableStyling();
 };
 
 void RenderedDocumentContractTest::strikethroughIsStruckOut()
@@ -148,6 +152,52 @@ void RenderedDocumentContractTest::fencedCodeIsShownVerbatim()
     QVERIFY(text.contains("key\n: value"));
     QVERIFY(text.contains("**not bold**"));
     QVERIFY(!text.contains("definition"));
+}
+
+void RenderedDocumentContractTest::deepNestingLaysOutQuickly_data()
+{
+    QTest::addColumn<QString>("markdown");
+
+    // QTextDocument's nested-table layout cost roughly doubles per level
+    // (measured: depth 14 = 846 ms; depth 20 froze the shipped app). The
+    // wrappers cap table nesting, so any depth must lay out quickly.
+    for (int depth : {5, 20, 100, 2000})
+        QTest::newRow(qPrintable(QString("quotes %1").arg(depth)))
+            << QString(depth, u'>') + " deep text\n";
+
+    QTest::newRow("divs 50")
+        << QString("<div>").repeated(50) + "deep text" + QString("</div>").repeated(50) + "\n";
+
+    QTest::newRow("divs inside quotes")
+        << QString(30, u'>') + " <div><div><div><div>deep text</div></div></div></div>\n";
+
+    QString codeInQuotes;
+    for (int level = 1; level <= 30; ++level)
+        codeInQuotes += QString(level, u'>') + " ```\n" + QString(level, u'>') + " code\n"
+                      + QString(level, u'>') + " ```\n" + QString(level, u'>') + "\n";
+    QTest::newRow("code blocks at every quote level") << codeInQuotes + "deep text\n";
+}
+
+void RenderedDocumentContractTest::deepNestingLaysOutQuickly()
+{
+    // Guards the whole path up to the screen: pipeline stages AND Qt layout.
+    QFETCH(QString, markdown);
+    QElapsedTimer timer;
+    timer.start();
+    const auto r = renderToDocument(markdown);
+    r.document->setTextWidth(800);
+    QVERIFY(r.document->size().height() > 0); // forces a full layout
+    const qint64 elapsed = timer.elapsed();
+    qInfo("%s: render + layout %lld ms", QTest::currentDataTag(), elapsed);
+
+    QVERIFY2(r.document->toPlainText().contains("deep text"), "content was lost");
+    QVERIFY2(elapsed < 2000, qPrintable(QString("took %1 ms (budget 2000 ms)").arg(elapsed)));
+}
+
+void RenderedDocumentContractTest::shallowQuotesKeepTableStyling()
+{
+    const auto r = renderToDocument(">>> three levels\n");
+    QCOMPARE(r.renderResult.html.count("blockquote-table"), 3);
 }
 
 QTEST_MAIN(RenderedDocumentContractTest)
