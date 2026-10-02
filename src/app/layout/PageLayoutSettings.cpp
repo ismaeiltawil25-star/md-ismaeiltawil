@@ -68,10 +68,10 @@ PageMargins marginsFromId(const QString &id, PageMargins fallback)
 QString paperLabel(PaperSize paper)
 {
     switch (paper) {
-    case PaperSize::A4:     return QStringLiteral("A4 (210 × 297 mm)");
-    case PaperSize::A5:     return QStringLiteral("A5 (148 × 210 mm)");
-    case PaperSize::Letter: return QStringLiteral("Letter (8.5 × 11 in)");
-    case PaperSize::Legal:  return QStringLiteral("Legal (8.5 × 14 in)");
+    case PaperSize::A4:     return QStringLiteral("A4 (210 \u00D7 297 mm)");
+    case PaperSize::A5:     return QStringLiteral("A5 (148 \u00D7 210 mm)");
+    case PaperSize::Letter: return QStringLiteral("Letter (8.5 \u00D7 11 in)");
+    case PaperSize::Legal:  return QStringLiteral("Legal (8.5 \u00D7 14 in)");
     }
     return paperId(paper);
 }

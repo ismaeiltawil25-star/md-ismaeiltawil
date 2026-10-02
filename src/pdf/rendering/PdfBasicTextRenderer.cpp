@@ -26,7 +26,7 @@ QString PdfBasicTextRenderer::decodeTextBytes(const QByteArray &raw, bool &ok, Q
         && static_cast<unsigned char>(raw[0]) == 0xFE
         && static_cast<unsigned char>(raw[1]) == 0xFF) {
         ok = false;
-        diag = QStringLiteral("UTF-16BE BOM detected — unsupported encoding");
+        diag = QStringLiteral("UTF-16BE BOM detected \u2014 unsupported encoding");
         return {};
     }
     QString s;

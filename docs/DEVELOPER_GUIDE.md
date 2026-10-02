@@ -19,11 +19,21 @@ file bytes
   │  mdbr::text::decode          services/text/TextDecoder.cpp       bytes → Unicode (encoding detection)
   │  normalizeLineEndings                                            CRLF / CR → LF
   ▼
+  │  MarkdownPreprocessor::preprocess()  (single entry point, fixed order)
   │  stripFrontMatter            services/markdown/FrontMatterStripper.cpp     remove YAML header
+  │  processFootnotes            services/markdown/FootnoteProcessor.cpp       [^1] → numbered notes
   │  convertDefinitionLists      services/markdown/DefinitionListConverter.cpp Term / ": desc" → table
-  │      └─ both use FenceTracker  services/markdown/FenceTracker.cpp  never rewrite fenced code
+  │      └─ all use FenceTracker + InlineCodeSpans: never rewrite code
   ▼
-  │  md4c (MD_DIALECT_GITHUB)    renderers/MarkdownHtmlRenderer.cpp  Markdown → HTML
+  │  md4c (GitHub dialect + math + wiki links)   renderers/MarkdownHtmlRenderer.cpp
+  │  ── extensions (renderers/extensions/, each switchable in MarkdownExtensions) ──
+  │  renderAlerts                > [!NOTE] callouts with coloured bar
+  │  renderMath                  $…$ / $$…$$ via LatexMathConverter
+  │  renderWikiLinks             [[Page]] → Page.md
+  │  addHeadingAnchors           GitHub slugs for #section links
+  │  applyInlineExtensions       ==mark== ^sup^ :emoji:  (HtmlTextRuns: text only)
+  │  highlightCodeBlocks         ```lang colouring (SyntaxLanguages rule table)
+  │  ── presentation ──
   │  wrapBlockquotes             renderers/HtmlElementWrapper.cpp    tables for quote bar
   │  wrapCodeBlocks              renderers/HtmlElementWrapper.cpp    tables for code background
   │  normalizeRawTags            renderers/HtmlNormalizer.cpp        HTML5 → QTextDocument subset
@@ -70,6 +80,38 @@ Rules:
 - Tests: `PageLayoutTest` (units), `PageViewRenderingTest` (pagination,
   pixels in day and night themes), `MainWindowPageViewTest` (the real open path).
 
+### Markdown extensions
+
+Everything beyond CommonMark and GFM lives in `src/renderers/extensions/`
+(HTML stages) or `src/services/markdown/` (text stages). Each one can be
+switched off in `mdbr::MarkdownExtensions` (`renderers/MarkdownExtensions.h`).
+
+| Syntax | Unit | Notes |
+|---|---|---|
+| `[^1]` footnotes | `FootnoteProcessor` | Numbered by first use; undefined/unused notes kept as written |
+| `> [!NOTE]` alerts | `AlertRenderer` | NOTE, TIP, IMPORTANT, WARNING, CAUTION |
+| `$x$`, `$$x$$` | md4c + `LatexMathConverter` | Unicode/HTML approximation; MicroTeX could replace it |
+| `[[Page]]` | md4c + `LinkAndMathRenderers` | `Page.md`; `[[Page#Part]]` → `Page.md#part` |
+| `#section` links | `HeadingAnchors` | GitHub slug rules, Unicode-aware |
+| `==mark==`, `^sup^`, `:emoji:` | `InlineExtensions` + `EmojiShortcodes` | Text runs only, never inside code or links |
+| ```` ```lang ```` colouring | `SyntaxHighlighter` + `SyntaxLanguages` | 20 languages in a data table; theme colours in `ReaderStylesheetBuilder` |
+
+`MarkdownFeatureCoverageTest` is the support matrix: one row per syntax
+feature, checked on the rendered `QTextDocument`. To add a feature, add a row,
+watch it fail, implement it, and watch it pass.
+
+Not supported, by design or for now: `H~2~O` subscript (md4c reads `~x~` as
+strikethrough, like GitHub), Mermaid diagrams, and remote `http://` images.
+QTextBrowser loads only local files, and fetching remote images would leak
+the reader's IP address to trackers.
+
+### Links
+
+`MainWindow::onAnchorClicked` handles every link click: web links open in the
+browser, `#section` scrolls the current document, and links to supported local
+files open in a new tab. A document can never make the reader launch other
+local files (scripts, executables) through the operating system.
+
 ---
 
 ## 2. Folder responsibilities
@@ -80,6 +122,7 @@ Rules:
 | `src/services/markdown/` | Text-level Markdown preprocessing | HTML, Qt Gui/Widgets |
 | `src/services/` | File loading, preprocessing facade | Qt Widgets |
 | `src/renderers/` | Markdown → HTML stages | Qt Widgets |
+| `src/renderers/extensions/` | Optional syntax (alerts, math, emoji, highlighting...) | Qt Widgets |
 | `src/models/` | Plain data structs | anything with behaviour |
 | `src/app/` | Windows, tabs, menus, settings UI | — |
 | `src/app/layout/` | Page view: settings, geometry, palette, persistence, dialog | Markdown pipeline |
@@ -118,7 +161,15 @@ Rules for new code (existing code is migrated when it is touched):
   to plain tags. Current caps: `HtmlElementWrapper::kMaxBlockquoteTableDepth`
   (5) and `HtmlNormalizer::kMaxDivTableDepth` (3). `deepNestingLaysOutQuickly`
   in `RenderedDocumentContractTest` checks render plus layout end to end.
-- **Text preprocessors must use `FenceTracker`,** so they never rewrite code.
+- **Text preprocessors must use `FenceTracker`** and `replaceOutsideCodeSpans`,
+  so they never rewrite code. HTML stages that change visible text must go
+  through `transformTextRuns`, which skips code, links and math.
+- **Raw string literals that contain `)"` need a delimiter**, e.g.
+  `R"re(<a href="([^"]*)">)re"`. Plain `R"(...)"` ends at the first `)"`.
+- **Never name anything `emit`, `signals` or `slots`.** Qt defines them as macros.
+- **Every stage must survive hostile input.** Recursive parsers need a depth
+  limit (see `LatexMathConverter`, `kMaxDepth`), and large inputs need a size
+  limit (see `kMaxHighlightChars`). Add a row to `RenderRobustnessTest`.
 - **Never drop content silently.** If input is ambiguous, keep it visible
   (see `FrontMatterStripper`: prose between `---` lines is not front matter).
 
@@ -145,7 +196,9 @@ Errors are caught in layers, from fastest feedback to slowest:
 |---|---|---|
 | Compiler warnings | Unused code, shadowing, null dereference, bad comparisons | `cmake/CompilerWarnings.cmake` |
 | Unit tests | Logic errors inside one stage | `tests/unit/` |
+| Source hygiene | Raw non-ASCII characters in string literals | `SourceHygieneTest` |
 | Rendered-document contract | HTML that Qt does not render as intended | `RenderedDocumentContractTest` |
+| Feature coverage | Any supported Markdown syntax that stops rendering | `MarkdownFeatureCoverageTest` |
 | Fuzzing | Crashes or failures on unexpected input | `RenderRobustnessTest` (seeded, reproducible) |
 | Time budgets | Quadratic or worse slowdowns, freezes | `RenderRobustnessTest` |
 | CI (two compilers) | Compiler-specific behaviour | `.github/workflows/ci.yml` |
@@ -193,10 +246,10 @@ These features are not supported yet. Each one needs its own unit and tests:
 
 | Feature | Notes |
 |---|---|
-| Footnotes `[^1]` | md4c does not support them; needs a preprocessing stage or a parser change |
-| Math `$...$` | md4c can emit spans (`MD_FLAG_LATEXMATHSPANS`); rendering needs a math engine |
-| Syntax highlighting | Code blocks keep `class="language-x"`; a highlighter stage could color them |
+| Full math typesetting | Current math is a readable approximation; MicroTeX (MIT) could render real formulas behind `latexToHtml()` |
+| More highlighter languages | Add a `LanguageRules` entry in `SyntaxLanguages.cpp`; KSyntaxHighlighting (MIT) could replace the tokenizer |
 | Mermaid diagrams | Out of scope for QTextBrowser |
-| Remote images (`http://`) | QTextBrowser loads only local resources |
+| Remote images (`http://`) | Would need opt-in download (privacy: tracking pixels) |
+| Extension settings UI | `MarkdownExtensions` already has the switches; only a dialog is missing |
 | Async loading | Large files block the UI while loading |
 | Encoding override | A menu to re-open a file with a chosen encoding when the guess is wrong |

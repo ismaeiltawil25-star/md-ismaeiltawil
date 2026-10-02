@@ -8,6 +8,8 @@
 #include <QTextDocument>
 #include <memory>
 
+#include "app/appearance/ReaderAppearanceDefaults.h"
+#include "app/appearance/ReaderStylesheetBuilder.h"
 #include "renderers/MarkdownHtmlRenderer.h"
 #include "services/MarkdownPreprocessor.h"
 
@@ -21,14 +23,16 @@ struct RenderedDocument
 
 inline QString preprocess(const QString &markdown)
 {
-    return MarkdownPreprocessor::convertDefinitionLists(
-        MarkdownPreprocessor::stripYamlFrontMatter(markdown));
+    return MarkdownPreprocessor::preprocess(markdown);
 }
 
 inline RenderedDocument renderToDocument(const QString &markdown)
 {
     RenderedDocument out;
     out.renderResult = MarkdownHtmlRenderer::render(preprocess(markdown));
+    // Same document stylesheet as the reader (night theme, the app default).
+    out.document->setDefaultStyleSheet(ReaderStylesheetBuilder::buildDocumentStylesheet(
+        ReaderAppearanceDefaults::nightPalette()));
     out.document->setHtml(out.renderResult.html);
     return out;
 }

@@ -20,18 +20,26 @@ endfunction()
 add_unit_test(DocumentLoaderTest unit/DocumentLoaderTest.cpp)
 add_unit_test(TextDecoderTest unit/TextDecoderTest.cpp)
 add_unit_test(FenceTrackerTest unit/FenceTrackerTest.cpp)
+add_unit_test(MarkdownExtensionUnitsTest unit/MarkdownExtensionUnitsTest.cpp)
 add_unit_test(SupportedFileTypesTest unit/SupportedFileTypesTest.cpp)
 
 # Pipeline tests that load rendered HTML into a QTextDocument (needs Qt Gui).
 # Run headless so they also work on CI agents without a desktop session.
 function(add_render_test name source)
     add_unit_test(${name} ${source})
-    target_link_libraries(${name} PRIVATE Qt6::Gui)
+    target_link_libraries(${name} PRIVATE md_backpack_appearance Qt6::Gui)
     set_tests_properties(${name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endfunction()
 
 add_render_test(RenderedDocumentContractTest unit/RenderedDocumentContractTest.cpp)
 add_render_test(RenderRobustnessTest unit/RenderRobustnessTest.cpp)
+add_render_test(MarkdownFeatureCoverageTest unit/MarkdownFeatureCoverageTest.cpp)
+
+# Rules the compiler cannot check (e.g. no raw non-ASCII in string literals).
+add_executable(SourceHygieneTest unit/SourceHygieneTest.cpp)
+target_compile_definitions(SourceHygieneTest PRIVATE SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+target_link_libraries(SourceHygieneTest PRIVATE Qt6::Core Qt6::Test)
+add_test(NAME SourceHygieneTest COMMAND SourceHygieneTest)
 
 # Page view: settings/geometry/palette unit tests + widget rendering test.
 add_executable(PageLayoutTest unit/PageLayoutTest.cpp)
@@ -133,6 +141,21 @@ target_link_libraries(MainWindowPageViewTest PRIVATE
     Qt6::Widgets Qt6::Test Qt6::Network
 )
 add_test(NAME MainWindowPageViewTest COMMAND MainWindowPageViewTest)
+
+add_executable(MainWindowLinkNavigationTest
+    unit/MainWindowLinkNavigationTest.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/MainWindow.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/document/DocumentOpenPipeline.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/appearance/ReaderAppearanceDialog.cpp
+)
+target_include_directories(MainWindowLinkNavigationTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(MainWindowLinkNavigationTest PRIVATE
+    md_backpack_core md_backpack_appearance md_backpack_layout
+    pdf_widgets pdf_preview_services pdf_rendering pdf_core
+    Qt6::Widgets Qt6::Test Qt6::Network
+)
+add_test(NAME MainWindowLinkNavigationTest COMMAND MainWindowLinkNavigationTest)
 
 add_executable(DocumentOpenPipelineTest
     unit/DocumentOpenPipelineTest.cpp

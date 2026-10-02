@@ -118,6 +118,8 @@ Test executables (6):
 | Task-list Unicode escapes | ☐/☑ were garbled on non-MSVC compilers |
 | Strict warnings + MinGW CI job | Compiler-specific bugs and warnings now fail CI |
 | Page view (Settings > Page Layout) | New: print-accurate A4/A5/Letter/Legal pages with margins and gaps, readable in night mode |
+| Markdown extensions | Footnotes, alerts, math, highlight, superscript, emoji, wiki links, heading anchors, syntax highlighting: 37/37 features in `MarkdownFeatureCoverageTest` |
+| Link navigation | `#section` and links to local `.md` files work; unsupported local files are never launched |
 
 The previous test status below is kept for history. For the current
 baseline, see README.md.
@@ -162,7 +164,7 @@ baseline, see README.md.
 8. **Microsoft Visual C++ Redistributable may be required** on clean Windows machines
 9. **Zoom does not persist** between app launches
 10. **Single-window only** — no support for multiple independent windows
-11. **Not supported:** footnotes, math, syntax highlighting, Mermaid, remote images. See the roadmap in DEVELOPER_GUIDE.md section 6
+11. **Not supported:** Mermaid diagrams, remote images, `~subscript~`. Math is a readable approximation, not full typesetting. See DEVELOPER_GUIDE.md section 6
 12. **Max file size (10 MB)** is a compile-time constant — no user-facing settings UI for this value
 13. **Wide tables overflow** — QTextDocument does not support horizontal scrolling or table auto-wrapping; very wide tables may be clipped
 14. **`<details>` non-interactive** — QTextDocument cannot toggle disclosure widgets; `<details>` content is always visible

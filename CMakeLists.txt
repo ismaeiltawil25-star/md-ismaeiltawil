@@ -32,9 +32,34 @@ add_library(md_backpack_core STATIC
     src/services/markdown/FrontMatterStripper.cpp
     src/services/markdown/DefinitionListConverter.h
     src/services/markdown/DefinitionListConverter.cpp
+    src/services/markdown/FootnoteProcessor.h
+    src/services/markdown/FootnoteProcessor.cpp
+    src/services/markdown/InlineCodeSpans.h
+    src/services/markdown/InlineCodeSpans.cpp
     src/renderers/MarkdownHtmlRenderer.h
     src/renderers/MarkdownHtmlRenderer.cpp
     src/renderers/RenderPipelineStage.h
+    src/renderers/MarkdownExtensions.h
+    src/renderers/extensions/HtmlEntities.h
+    src/renderers/extensions/HtmlEntities.cpp
+    src/renderers/extensions/HtmlTextRuns.h
+    src/renderers/extensions/HtmlTextRuns.cpp
+    src/renderers/extensions/EmojiShortcodes.h
+    src/renderers/extensions/EmojiShortcodes.cpp
+    src/renderers/extensions/InlineExtensions.h
+    src/renderers/extensions/InlineExtensions.cpp
+    src/renderers/extensions/LatexMathConverter.h
+    src/renderers/extensions/LatexMathConverter.cpp
+    src/renderers/extensions/LinkAndMathRenderers.h
+    src/renderers/extensions/LinkAndMathRenderers.cpp
+    src/renderers/extensions/HeadingAnchors.h
+    src/renderers/extensions/HeadingAnchors.cpp
+    src/renderers/extensions/AlertRenderer.h
+    src/renderers/extensions/AlertRenderer.cpp
+    src/renderers/extensions/SyntaxLanguages.h
+    src/renderers/extensions/SyntaxLanguages.cpp
+    src/renderers/extensions/SyntaxHighlighter.h
+    src/renderers/extensions/SyntaxHighlighter.cpp
     src/renderers/HtmlElementWrapper.h
     src/renderers/HtmlElementWrapper.cpp
     src/renderers/HtmlNormalizer.h

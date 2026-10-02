@@ -1,5 +1,8 @@
 #include "HtmlElementWrapper.h"
 
+#include <QRegularExpression>
+
+#include <utility>
 #include <vector>
 
 // Wrap each fenced code block (<pre><code...>...</code></pre>) in a table+cell
@@ -57,8 +60,10 @@ QString HtmlElementWrapper::wrapBlockquotes(const QString &html)
     static const QString tableOpen = QStringLiteral(
         "<table class=\"blockquote-table\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\">"
         "<tr>"
-        "<td class=\"blockquote-bar\" width=\"4\"></td>"
+        "<td class=\"blockquote-bar\" width=\"4\"%1></td>"
         "<td class=\"blockquote-cell\" width=\"100%\">");
+    // AlertRenderer marks alerts with data-alert-color; the bar takes that colour.
+    static const QRegularExpression alertColor(QStringLiteral("data-alert-color=\"(#[0-9A-Fa-f]{6})\""));
     static const QString tableClose = QStringLiteral("</td></tr></table>");
 
     const QStringView view(html);
@@ -86,9 +91,15 @@ QString HtmlElementWrapper::wrapBlockquotes(const QString &html)
                 break;
             out += view.sliced(pos, nextOpen - pos);
             ++depth;
-            out += depth <= kMaxBlockquoteTableDepth
-                ? QStringView(tableOpen)
-                : view.sliced(nextOpen, tagEnd + 1 - nextOpen);
+            const QStringView openTagText = view.sliced(nextOpen, tagEnd + 1 - nextOpen);
+            if (depth <= kMaxBlockquoteTableDepth) {
+                const auto color = alertColor.matchView(openTagText);
+                out += tableOpen.arg(color.hasMatch()
+                    ? QStringLiteral(" style=\"background-color: %1;\"").arg(color.captured(1))
+                    : QString());
+            } else {
+                out += openTagText;
+            }
             pos = tagEnd + 1;
             nextOpen = view.indexOf(openTag, pos);
         }
@@ -107,8 +118,9 @@ QString HtmlElementWrapper::wrapBlockquotes(const QString &html)
 // nested tables inside the quote — code blocks, nested quotes — are handled).
 QString HtmlElementWrapper::swapBlockquoteOrderForRtl(const QString &html)
 {
-    static const QString barCell = QStringLiteral(
-        "<td class=\"blockquote-bar\" width=\"4\"></td>");
+    // Bars may carry an inline colour (alerts), so match by prefix up to </td>.
+    static const QString barPrefix = QStringLiteral("<td class=\"blockquote-bar\"");
+    static const QString cellEnd = QStringLiteral("</td>");
     static const QString contentCellPrefix = QStringLiteral("<td class=\"blockquote-cell\"");
     static const QString rtlMarker = QStringLiteral("dir=\"rtl\"");
 
@@ -116,9 +128,9 @@ QString HtmlElementWrapper::swapBlockquoteOrderForRtl(const QString &html)
     QString out;
     out.reserve(html.size());
 
-    // One entry per open <td>: true when the bar must be emitted after its </td>.
-    std::vector<bool> openCells;
-    bool barPending = false;
+    // One entry per open <td>: the bar to emit after its </td> (empty = none).
+    std::vector<QString> openCells;
+    QString barPending;
     qsizetype pos = 0;
 
     while (pos < view.size()) {
@@ -130,14 +142,18 @@ QString HtmlElementWrapper::swapBlockquoteOrderForRtl(const QString &html)
         out += view.sliced(pos, lt - pos);
 
         const QStringView rest = view.sliced(lt);
-        if (rest.startsWith(barCell)) {
-            const QStringView next = rest.sliced(barCell.size());
-            const qsizetype nextEnd = next.indexOf(u'>');
-            if (next.startsWith(contentCellPrefix) && nextEnd >= 0
-                && next.first(nextEnd).contains(rtlMarker)) {
-                barPending = true; // drop the bar here, re-emit after the cell
-                pos = lt + barCell.size();
-                continue;
+        if (rest.startsWith(barPrefix)) {
+            const qsizetype barEnd = rest.indexOf(cellEnd);
+            if (barEnd >= 0) {
+                const QStringView bar = rest.first(barEnd + cellEnd.size());
+                const QStringView next = rest.sliced(bar.size());
+                const qsizetype nextEnd = next.indexOf(u'>');
+                if (next.startsWith(contentCellPrefix) && nextEnd >= 0
+                    && next.first(nextEnd).contains(rtlMarker)) {
+                    barPending = bar.toString(); // drop the bar here, re-emit after the cell
+                    pos = lt + bar.size();
+                    continue;
+                }
             }
         }
 
@@ -151,13 +167,11 @@ QString HtmlElementWrapper::swapBlockquoteOrderForRtl(const QString &html)
         pos = gt + 1;
 
         if (tag.startsWith(u"<td") && (tag.size() == 4 || tag[3] == u' ')) {
-            openCells.push_back(barPending);
-            barPending = false;
+            openCells.push_back(std::move(barPending));
+            barPending.clear();
         } else if (tag == u"</td>" && !openCells.empty()) {
-            const bool emitBar = openCells.back();
+            out += openCells.back();
             openCells.pop_back();
-            if (emitBar)
-                out += barCell;
         }
     }
 

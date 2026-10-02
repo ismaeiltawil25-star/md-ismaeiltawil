@@ -13,6 +13,11 @@ Renders `.md` files as HTML in tabs using the **md4c** parser (no WebEngine).
   Windows-1256 (Arabic) and Windows-1252; the status bar says when the encoding was guessed
 - Render GitHub-flavored Markdown with md4c: tables, task lists, ~~strikethrough~~,
   automatic links for bare URLs
+- Extended syntax: footnotes, GitHub alerts (`> [!NOTE]`), math (`$..$`, `$$..$$`),
+  `==highlight==`, `^superscript^`, `:emoji:` shortcodes, `[[wiki links]]`,
+  heading anchors for `#section` links, and syntax highlighting for 20 languages
+- Clickable links: `#section` scrolls the document, and links to other Markdown files
+  open them in a new tab
 - Right-to-left layout for Arabic/Hebrew paragraphs, lists and quotes
 - Optional page view (Settings > Page Layout...): documents are split into
   printed pages (A4, A5, Letter, Legal) with margins and gaps, like a word

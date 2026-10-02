@@ -112,10 +112,10 @@ void DocumentOpenPipelineTest::testDiagnosticsPassThroughPipeline()
 
     QVERIFY(result.isValid());
     QVERIFY(!result.diagnostics.isEmpty());
-    QCOMPARE(result.diagnostics.size(), 7);
+    QCOMPARE(result.diagnostics.size(), 13); // every stage of RenderPipelineStage.h
     // Verify each diagnostic has a valid stage enum value
     QCOMPARE(result.diagnostics[0].stage, RenderStage::Md4c);
-    QCOMPARE(result.diagnostics[6].stage, RenderStage::TaskListNormalize);
+    QCOMPARE(result.diagnostics.last().stage, RenderStage::TaskListNormalize);
     // Timing must be non-negative
     for (const auto &diag : result.diagnostics)
         QVERIFY(diag.elapsedMs >= 0);

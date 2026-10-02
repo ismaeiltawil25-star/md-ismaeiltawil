@@ -11,7 +11,7 @@ using mdbr::text::SourceEncoding;
 namespace {
 
 // "مرحبا بالعالم" (Hello world)
-const QString kArabic = QStringLiteral(u"مرحبا بالعالم");
+const QString kArabic = QStringLiteral(u"\u0645\u0631\u062D\u0628\u0627 \u0628\u0627\u0644\u0639\u0627\u0644\u0645");
 
 QByteArray utf16Bytes(const QString &text, bool littleEndian)
 {
@@ -117,14 +117,14 @@ void TextDecoderTest::windows1252GermanIsNotMistakenForArabic()
     const QByteArray bytes = QByteArray::fromHex("536368f66e65204772fcdf6520617573204dfc6e6368656e");
     const auto result = mdbr::text::decode(bytes);
     QCOMPARE(result.encoding, SourceEncoding::Windows1252);
-    QCOMPARE(result.text, QStringLiteral(u"Schöne Grüße aus München"));
+    QCOMPARE(result.text, QStringLiteral(u"Sch\u00F6ne Gr\u00FC\u00DFe aus M\u00FCnchen"));
 }
 
 void TextDecoderTest::windows1252FrenchFallback()
 {
     const auto result = mdbr::text::decode(QByteArray::fromHex("636166e9206372e86d65"));
     QCOMPARE(result.encoding, SourceEncoding::Windows1252);
-    QCOMPARE(result.text, QStringLiteral(u"café crème"));
+    QCOMPARE(result.text, QStringLiteral(u"caf\u00E9 cr\u00E8me"));
 }
 
 void TextDecoderTest::decodeNeverLosesAsciiContent()

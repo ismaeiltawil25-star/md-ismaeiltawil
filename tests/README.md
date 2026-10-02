@@ -4,6 +4,10 @@
 |---|---|
 | `unit/` | QtTest unit tests for Markdown, appearance, document and app layers |
 | `unit/RenderedDocumentContractTest.cpp` | Asserts on the `QTextDocument` the reader shows (strike-out, links, RTL, no lost content) |
+| `unit/MarkdownFeatureCoverageTest.cpp` | Support matrix: every Markdown syntax feature, checked on the rendered document |
+| `unit/MarkdownExtensionUnitsTest.cpp` | Edge cases of each extension stage (footnotes, math, emoji, highlighting...) |
+| `unit/SourceHygieneTest.cpp` | Rules the compiler cannot check (no raw non-ASCII in string literals) |
+| `manual/extended-syntax-test.md` | Open in the app to see every extension |
 | `unit/RenderRobustnessTest.cpp` | Seeded fuzzing, pathological inputs and time budgets (catches freezes) |
 | `unit/pdf/` | Custom PDF engine tests (parser, content streams, rendering) |
 | `unit/widgets/`, `unit/services/` | PDF preview widget and service tests |

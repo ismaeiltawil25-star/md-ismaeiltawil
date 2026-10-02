@@ -1,4 +1,5 @@
 #include <QtTest/QtTest>
+#include "HtmlTestHelpers.h"
 #include <QString>
 
 #include "renderers/MarkdownHtmlRenderer.h"
@@ -208,7 +209,7 @@ int value = 42;
         // Code content must be preserved
         QVERIFY2(html.contains(QStringLiteral("نص عربي داخل كود")),
                  "Arabic text inside code block was lost.");
-        QVERIFY2(html.contains(QStringLiteral("int value = 42;")),
+        QVERIFY2(mdbr::test::visibleText(html).contains(QStringLiteral("int value = 42;")),
                  "C++ code content was lost.");
     }
 

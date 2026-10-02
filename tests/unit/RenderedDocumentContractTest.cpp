@@ -86,7 +86,7 @@ void RenderedDocumentContractTest::boldAndItalicKeepFormatting()
 void RenderedDocumentContractTest::arabicParagraphIsRightToLeft()
 {
     // "مرحبا بالعالم"
-    const QString arabic = QStringLiteral(u"مرحبا بالعالم");
+    const QString arabic = QStringLiteral(u"\u0645\u0631\u062D\u0628\u0627 \u0628\u0627\u0644\u0639\u0627\u0644\u0645");
     const auto r = renderToDocument(arabic);
     QCOMPARE(blockFormatOf(*r.document, arabic).layoutDirection(), Qt::RightToLeft);
 }
@@ -94,14 +94,14 @@ void RenderedDocumentContractTest::arabicParagraphIsRightToLeft()
 void RenderedDocumentContractTest::arabicParagraphAfterCodeBlockIsRightToLeft()
 {
     // Regression: the RTL stage used to stop detecting after the first code block.
-    const QString arabic = QStringLiteral(u"مرحبا بالعالم");
+    const QString arabic = QStringLiteral(u"\u0645\u0631\u062D\u0628\u0627 \u0628\u0627\u0644\u0639\u0627\u0644\u0645");
     const auto r = renderToDocument("```\ncode\n```\n\n" + arabic + "\n");
     QCOMPARE(blockFormatOf(*r.document, arabic).layoutDirection(), Qt::RightToLeft);
 }
 
 void RenderedDocumentContractTest::arabicQuoteIsRightToLeft()
 {
-    const QString arabic = QStringLiteral(u"مرحبا بالعالم");
+    const QString arabic = QStringLiteral(u"\u0645\u0631\u062D\u0628\u0627 \u0628\u0627\u0644\u0639\u0627\u0644\u0645");
     const auto r = renderToDocument("> " + arabic + "\n");
     QCOMPARE(blockFormatOf(*r.document, arabic).layoutDirection(), Qt::RightToLeft);
 }
@@ -116,8 +116,8 @@ void RenderedDocumentContractTest::taskListShowsBallotBoxes()
 {
     const auto r = renderToDocument("- [ ] open\n- [x] done\n");
     const QString text = r.document->toPlainText();
-    QVERIFY(text.contains(QStringLiteral(u"☐ open")));
-    QVERIFY(text.contains(QStringLiteral(u"☑ done")));
+    QVERIFY(text.contains(QStringLiteral(u"\u2610 open")));
+    QVERIFY(text.contains(QStringLiteral(u"\u2611 done")));
 }
 
 void RenderedDocumentContractTest::leadingHorizontalRuleKeepsContent()

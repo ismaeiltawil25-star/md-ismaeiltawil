@@ -35,12 +35,14 @@ const QStringList kFragments = {
     "| a | b |\n", "|---|---|\n", "| 1 | 2 |\n", "**bold** ", "*em* ", "~~del~~ ",
     "`code` ", "[link](https://example.com) ", "https://example.com/x ", "www.example.org ",
     "<div>", "</div>", "<details>", "<summary>S</summary>", "</details>", "<kbd>K</kbd>",
+    "$x^2$ ", "$$\n\\sum_{i}\n$$\n", "\\frac{", "==hi== ", "^2^ ", ":rocket: ", "[[Page]] ",
+    "[^1]", "[^1]: note\n", "> [!WARNING]\n", "```python\n", "```cpp\n", "# Heading\n",
     "<mark>M</mark>", "<br>", "<p>", "</p>", "<", ">", "&amp; ", "&", "\\*", "*", "_", "[", "]",
     "(", ")", "!", "|", "`", "~", ":", "\t", "\r\n", "\r",
-    QStringLiteral(u"مرحبا "), // Arabic word
-    QStringLiteral(u"שלום "),       // Hebrew word
+    QStringLiteral(u"\u0645\u0631\u062D\u0628\u0627 "), // Arabic word
+    QStringLiteral(u"\u05E9\u05DC\u05D5\u05DD "),       // Hebrew word
     QStringLiteral(u"\U0001F600 "),                     // emoji (surrogate pair)
-    QStringLiteral(u"﻿"), QStringLiteral(u"\u0000"), QStringLiteral(u"�"),
+    QStringLiteral(u"\uFEFF"), QStringLiteral(u"\u0000"), QStringLiteral(u"\uFFFD"),
 };
 
 QString randomDocument(QRandomGenerator &rng)
@@ -67,7 +69,7 @@ QString realisticDocument(qsizetype minimumBytes)
 {
     const QString block = QStringLiteral(
         "## Section\n\nParagraph with **bold**, *italic*, `code` and a [link](https://example.com).\n\n"
-        u"هذه فقرة عربية with English.\n\n"
+        u"\u0647\u0630\u0647 \u0641\u0642\u0631\u0629 \u0639\u0631\u0628\u064A\u0629 with English.\n\n"
         "- item one\n- item two\n  - nested\n- [x] done\n\n> A quote.\n\n"
         "```python\ndef f(x):\n    return x\n```\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n"
         "Term\n: Definition text.\n\n");
@@ -137,9 +139,22 @@ void RenderRobustnessTest::pathologicalInputsStayFast_data()
     QTest::newRow("many divs")          << QString("<div>x</div>\n\n").repeated(20'000);
     QTest::newRow("nested divs")        << QString("<div>").repeated(5'000) + "x" + QString("</div>").repeated(5'000);
     QTest::newRow("many quotes")        << QString("> quote\n\n").repeated(20'000);
-    QTest::newRow("arabic paragraphs")  << QString(QStringLiteral(u"مرحبا بالعالم\n\n")).repeated(20'000);
-    QTest::newRow("arabic quotes")      << QString(QStringLiteral(u"> مرحبا\n\n")).repeated(20'000);
-    QTest::newRow("deep arabic quote")  << QString(2000, u'>') + QStringLiteral(u" مرحبا\n");
+    QTest::newRow("arabic paragraphs")  << QString(QStringLiteral(u"\u0645\u0631\u062D\u0628\u0627 \u0628\u0627\u0644\u0639\u0627\u0644\u0645\n\n")).repeated(20'000);
+    QTest::newRow("arabic quotes")      << QString(QStringLiteral(u"> \u0645\u0631\u062D\u0628\u0627\n\n")).repeated(20'000);
+    QTest::newRow("deep arabic quote")  << QString(2000, u'>') + QStringLiteral(u" \u0645\u0631\u062D\u0628\u0627\n");
+    QTest::newRow("math deep braces")   << "$" + QString(50'000, u'{') + "x$";
+    QTest::newRow("many dollars")       << QString(100'000, u'$');
+    QTest::newRow("many math spans")    << QString("$x^2$ ").repeated(20'000);
+    QTest::newRow("many highlights")    << QString("==a== ").repeated(30'000);
+    QTest::newRow("many carets")        << QString(100'000, u'^');
+    QTest::newRow("many colons")        << QString(":smile:").repeated(20'000) + QString(100'000, u':');
+    QTest::newRow("many footnotes")     << QString("x[^1] ").repeated(20'000) + "\n\n[^1]: note\n";
+    QTest::newRow("many definitions fn") << [] { QString s; for (int i = 0; i < 5000; ++i) s += QString("r[^%1] ").arg(i); s += "\n\n"; for (int i = 0; i < 5000; ++i) s += QString("[^%1]: n%1\n").arg(i); return s; }();
+    QTest::newRow("many wiki links")    << QString("[[Page]] ").repeated(20'000);
+    QTest::newRow("many alerts")        << QString("> [!NOTE]\n> x\n\n").repeated(5'000);
+    QTest::newRow("many headings")      << QString("## Same title\n\n").repeated(10'000);
+    QTest::newRow("big cpp block")      << "```cpp\n" + QString("int x = 42; // c \"s\"\n").repeated(8'000) + "```\n";
+    QTest::newRow("unclosed comment")   << "```cpp\n/*" + QString("text\n").repeated(30'000) + "```\n";
     QTest::newRow("table 5000 rows")   << "| a | b |\n|---|---|\n" + QString("| 1 | 2 |\n").repeated(5'000);
 }
 

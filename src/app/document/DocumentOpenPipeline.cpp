@@ -23,9 +23,9 @@ DocumentOpenResult DocumentOpenPipeline::open(const QString &filePath)
         return result;
     }
 
+    // `cleaned` is shown as plain text if rendering fails.
     QString cleaned = MarkdownPreprocessor::stripYamlFrontMatter(loadResult.document.rawText);
-    QString withDefinitions = MarkdownPreprocessor::convertDefinitionLists(cleaned);
-    auto renderResult = m_renderFn(withDefinitions);
+    auto renderResult = m_renderFn(MarkdownPreprocessor::preprocess(loadResult.document.rawText));
 
     QFileInfo fileInfo(filePath);
     result.tabState.filePath = fileInfo.absoluteFilePath();

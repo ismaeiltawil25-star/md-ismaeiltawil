@@ -4,6 +4,7 @@
 #include <QString>
 #include <QList>
 #include "models/MarkdownDocument.h"
+#include "renderers/MarkdownExtensions.h"
 #include "renderers/RenderPipelineStage.h"
 
 struct StageDiagnostic
@@ -26,7 +27,9 @@ public:
         bool isValid() const { return errorMessage.isEmpty(); }
     };
 
-    static Result render(const QString &markdown);
+    // `extensions` switches optional syntax on/off (all on by default).
+    static Result render(const QString &markdown,
+                         const mdbr::MarkdownExtensions &extensions = {});
     static Result render(const MarkdownDocument &doc);
 };
 

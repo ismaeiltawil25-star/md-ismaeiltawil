@@ -1,5 +1,46 @@
 #include "ReaderStylesheetBuilder.h"
 
+namespace {
+
+// Relative luminance of "#RRGGBB" (0 = black, 1 = white); invalid input counts as light.
+double luminance(const QString &hex)
+{
+    if (hex.size() != 7 || !hex.startsWith(u'#'))
+        return 1.0;
+    bool ok = false;
+    const uint rgb = hex.mid(1).toUInt(&ok, 16);
+    if (!ok)
+        return 1.0;
+    const double r = ((rgb >> 16) & 0xFF) / 255.0;
+    const double g = ((rgb >> 8) & 0xFF) / 255.0;
+    const double b = (rgb & 0xFF) / 255.0;
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+// Syntax colours (GitHub light / dark palettes), picked by page brightness so
+// code stays readable in day, night and custom themes.
+QString syntaxStylesheet(const QString &pageBackground)
+{
+    const bool dark = luminance(pageBackground) < 0.5;
+    const char *keyword = dark ? "#ff7b72" : "#cf222e";
+    const char *type    = dark ? "#d2a8ff" : "#8250df";
+    const char *string  = dark ? "#a5d6ff" : "#0a3069";
+    const char *comment = dark ? "#8b949e" : "#6e7781";
+    const char *number  = dark ? "#79c0ff" : "#0550ae";
+    const char *preproc = dark ? "#ffa657" : "#953800";
+    return QStringLiteral(
+               "span.tok-keyword { color: %1; font-weight: 600; }"
+               "span.tok-type { color: %2; }"
+               "span.tok-string { color: %3; }"
+               "span.tok-comment { color: %4; font-style: italic; }"
+               "span.tok-number { color: %5; }"
+               "span.tok-preproc { color: %6; }")
+        .arg(QLatin1StringView(keyword), QLatin1StringView(type), QLatin1StringView(string),
+             QLatin1StringView(comment), QLatin1StringView(number), QLatin1StringView(preproc));
+}
+
+} // namespace
+
 QString ReaderStylesheetBuilder::buildDocumentStylesheet(const ReaderAppearanceSettings &s)
 {
     return QStringLiteral(
@@ -110,7 +151,8 @@ QString ReaderStylesheetBuilder::buildDocumentStylesheet(const ReaderAppearanceS
         .arg(s.linkText)           // %9  link color
         .arg(s.horizontalRule)     // %10 hr border
         .arg(s.pageBackground)     // %11 body background
-        .arg(s.mutedText);         // %12 em, i color
+        .arg(s.mutedText)          // %12 em, i color
+        + syntaxStylesheet(s.pageBackground);
 }
 
 QString ReaderStylesheetBuilder::buildWidgetStylesheet(const ReaderAppearanceSettings &s,

@@ -1,4 +1,5 @@
 #include <QTest>
+#include "HtmlTestHelpers.h"
 #include "renderers/MarkdownHtmlRenderer.h"
 
 class MarkdownHtmlRendererTest : public QObject
@@ -176,7 +177,7 @@ void MarkdownHtmlRendererTest::testFencedCodeCppLanguageClass()
     QVERIFY(result.isValid());
     QVERIFY2(result.html.contains("<pre><code class=\"language-cpp\">"),
              "md4c must emit class=\"language-cpp\" on code element");
-    QVERIFY2(result.html.contains("int x = 1;"),
+    QVERIFY2(mdbr::test::visibleText(result.html).contains("int x = 1;"),
              "code content must be present");
 }
 
@@ -244,7 +245,7 @@ void MarkdownHtmlRendererTest::testFencedCodePreservesContent()
 {
     auto result = MarkdownHtmlRenderer::render("```cpp\nint x = 1;\n```\n");
     QVERIFY(result.isValid());
-    QVERIFY2(result.html.contains("int x = 1;"),
+    QVERIFY2(mdbr::test::visibleText(result.html).contains("int x = 1;"),
              "code content must be preserved after wrapping");
 }
 

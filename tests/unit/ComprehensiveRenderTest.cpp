@@ -1,4 +1,5 @@
 #include <QTest>
+#include "HtmlTestHelpers.h"
 #include <QFile>
 #include "renderers/MarkdownHtmlRenderer.h"
 #include "services/MarkdownPreprocessor.h"
@@ -110,22 +111,22 @@ void ComprehensiveRenderTest::testCodeBlocksPreserved()
     QVERIFY(renderResult.isValid());
 
     // C++ code
-    QVERIFY2(renderResult.html.contains("std::cout"),
+    QVERIFY2(mdbr::test::visibleText(renderResult.html).contains("std::cout"),
              "C++ code content must be preserved");
     // JavaScript code
-    QVERIFY2(renderResult.html.contains("fibonacci"),
+    QVERIFY2(mdbr::test::visibleText(renderResult.html).contains("fibonacci"),
              "JS code content must be preserved");
     // Python code
-    QVERIFY2(renderResult.html.contains("class MarkdownParser"),
+    QVERIFY2(mdbr::test::visibleText(renderResult.html).contains("class MarkdownParser"),
              "Python code content must be preserved");
     // PowerShell code
-    QVERIFY2(renderResult.html.contains("Get-MarkdownStats"),
+    QVERIFY2(mdbr::test::visibleText(renderResult.html).contains("Get-MarkdownStats"),
              "PowerShell code content must be preserved");
     // SQL code
-    QVERIFY2(renderResult.html.contains("doc_stats"),
+    QVERIFY2(mdbr::test::visibleText(renderResult.html).contains("doc_stats"),
              "SQL code content must be preserved");
     // JSON code
-    QVERIFY2(renderResult.html.contains("maxFileSize"),
+    QVERIFY2(mdbr::test::visibleText(renderResult.html).contains("maxFileSize"),
              "JSON code content must be preserved");
 }
 

@@ -20,8 +20,8 @@ QString TaskListNormalizer::normalizeTaskLists(const QString &html)
 
         if (hasTypeCheckbox && hasTaskClass && hasDisabled) {
             result += tag.contains(QStringLiteral("checked"))
-                          ? QStringLiteral(u"☑ ")  // ☑ BALLOT BOX WITH CHECK
-                          : QStringLiteral(u"☐ "); // ☐ BALLOT BOX
+                          ? QStringLiteral(u"\u2611 ")  // ☑ BALLOT BOX WITH CHECK
+                          : QStringLiteral(u"\u2610 "); // ☐ BALLOT BOX
         } else {
             result += tag;
         }

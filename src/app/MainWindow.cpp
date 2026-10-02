@@ -23,6 +23,7 @@
 #include <QStatusBar>
 #include <QTabWidget>
 #include <QTextBrowser>
+#include <QTimer>
 #include <QUrl>
 #include <QDesktopServices>
 #include <QVBoxLayout>
@@ -509,6 +510,13 @@ void MainWindow::setStatusBarReady()
     statusBar()->showMessage("Ready");
 }
 
+// Link handling:
+//   http/https/mailto  -> the system browser / mail client
+//   #section           -> scroll within the current document (heading anchors, footnotes)
+//   relative/local file -> opened IN THE READER if it is a supported type
+//                          (wiki links [[Page]] become Page.md links)
+// Security: a document can never make the reader launch other local files
+// (scripts, executables...) through the operating system.
 void MainWindow::onAnchorClicked(const QUrl &url)
 {
     if (url.scheme() == QStringLiteral("http")
@@ -516,6 +524,41 @@ void MainWindow::onAnchorClicked(const QUrl &url)
         || url.scheme() == QStringLiteral("mailto")) {
         if (!QDesktopServices::openUrl(url))
             statusBar()->showMessage(QString("Could not open: %1").arg(url.toString()));
+        return;
+    }
+
+    auto *source = qobject_cast<DocumentTabPage *>(sender());
+    const QString fragment = url.fragment(QUrl::FullyDecoded);
+
+    if (url.isRelative() && url.path().isEmpty()) {
+        if (source && !fragment.isEmpty())
+            source->scrollToAnchor(fragment);
+        return;
+    }
+
+    const QUrl resolved = source ? source->document()->baseUrl().resolved(url) : url;
+    if (!resolved.isLocalFile()) {
+        statusBar()->showMessage(QString("Unsupported link: %1").arg(url.toString()), 5000);
+        return;
+    }
+
+    const QString path = resolved.toLocalFile();
+    if (!QFileInfo::exists(path)) {
+        statusBar()->showMessage(QString("Link target not found: %1").arg(path), 5000);
+        return;
+    }
+    if (!mdbr::files::isSupported(path)) {
+        statusBar()->showMessage(QString("Not opened (unsupported file type): %1").arg(path), 5000);
+        return;
+    }
+
+    openDocumentFromPath(path);
+    if (!fragment.isEmpty()) {
+        // Scroll once the new tab has been laid out.
+        QTimer::singleShot(0, this, [this, fragment] {
+            if (auto *page = qobject_cast<DocumentTabPage *>(m_tabWidget->currentWidget()))
+                page->scrollToAnchor(fragment);
+        });
     }
 }
 
