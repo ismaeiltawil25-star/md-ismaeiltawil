@@ -24,6 +24,12 @@ add_library(md_backpack_core STATIC
     src/services/MarkdownPreprocessor.cpp
     src/services/text/TextDecoder.h
     src/services/text/TextDecoder.cpp
+    src/services/markdown/FenceTracker.h
+    src/services/markdown/FenceTracker.cpp
+    src/services/markdown/FrontMatterStripper.h
+    src/services/markdown/FrontMatterStripper.cpp
+    src/services/markdown/DefinitionListConverter.h
+    src/services/markdown/DefinitionListConverter.cpp
     src/renderers/MarkdownHtmlRenderer.h
     src/renderers/MarkdownHtmlRenderer.cpp
     src/renderers/RenderPipelineStage.h

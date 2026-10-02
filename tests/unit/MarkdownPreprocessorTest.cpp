@@ -19,6 +19,19 @@ private slots:
     void testDefinitionListInlineCodeInDescription();
     void testDefinitionListSkipsFencedCode();
     void testDefinitionListSkipsNormalParagraph();
+
+    // Regression tests: front matter must never swallow real content.
+    void testLeadingHorizontalRuleIsNotFrontMatter();
+    void testProseBetweenRulesIsNotFrontMatter();
+    void testFrontMatterWithListsAndComments();
+    void testFrontMatterClosedWithDots();
+    void testEmptyFrontMatterBlockIsKept();
+
+    // Regression tests: definition lists must not rewrite code or other blocks.
+    void testDefinitionListSkipsTildeFence();
+    void testDefinitionListSkipsIndentedBacktickFence();
+    void testDefinitionListSkipsHeadingTerm();
+    void testDefinitionListTableEndsWithBlankLine();
 };
 
 void MarkdownPreprocessorTest::testStripsValidYamlFrontMatter()
@@ -133,6 +146,68 @@ void MarkdownPreprocessorTest::testDefinitionListSkipsNormalParagraph()
     QString result = MarkdownPreprocessor::convertDefinitionLists(input);
     QVERIFY2(!result.contains("definition-table"),
              "normal paragraph with colon must not be converted");
+}
+
+void MarkdownPreprocessorTest::testLeadingHorizontalRuleIsNotFrontMatter()
+{
+    const QString input = "---\n\nFirst paragraph.\n\n---\n\nSecond paragraph.\n";
+    QCOMPARE(MarkdownPreprocessor::stripYamlFrontMatter(input), input);
+}
+
+void MarkdownPreprocessorTest::testProseBetweenRulesIsNotFrontMatter()
+{
+    const QString input = "---\nThis sentence has no key\n---\nBody";
+    QCOMPARE(MarkdownPreprocessor::stripYamlFrontMatter(input), input);
+}
+
+void MarkdownPreprocessorTest::testFrontMatterWithListsAndComments()
+{
+    const QString input = "---\n# comment\ntitle: Test\ntags:\n  - a\n  - b\ndescription: >\n  long text\n---\n# Body";
+    QCOMPARE(MarkdownPreprocessor::stripYamlFrontMatter(input), QString("# Body"));
+}
+
+void MarkdownPreprocessorTest::testFrontMatterClosedWithDots()
+{
+    const QString input = "---\ntitle: Test\n...\nBody";
+    QCOMPARE(MarkdownPreprocessor::stripYamlFrontMatter(input), QString("Body"));
+}
+
+void MarkdownPreprocessorTest::testEmptyFrontMatterBlockIsKept()
+{
+    // Two rules with nothing between them are rendered, not silently dropped.
+    const QString input = "---\n---\nBody";
+    QCOMPARE(MarkdownPreprocessor::stripYamlFrontMatter(input), input);
+}
+
+void MarkdownPreprocessorTest::testDefinitionListSkipsTildeFence()
+{
+    const QString input = "~~~\nkey\n: value\n~~~\n";
+    const QString result = MarkdownPreprocessor::convertDefinitionLists(input);
+    QVERIFY2(!result.contains("definition-table"), "tilde fenced code must not be converted");
+    QVERIFY(result.contains("key\n: value"));
+}
+
+void MarkdownPreprocessorTest::testDefinitionListSkipsIndentedBacktickFence()
+{
+    const QString input = "  ```\nkey\n: value\n  ```\n";
+    const QString result = MarkdownPreprocessor::convertDefinitionLists(input);
+    QVERIFY2(!result.contains("definition-table"), "indented fenced code must not be converted");
+}
+
+void MarkdownPreprocessorTest::testDefinitionListSkipsHeadingTerm()
+{
+    const QString input = "# Heading\n: not a description\n";
+    const QString result = MarkdownPreprocessor::convertDefinitionLists(input);
+    QVERIFY(!result.contains("definition-table"));
+}
+
+void MarkdownPreprocessorTest::testDefinitionListTableEndsWithBlankLine()
+{
+    // Without a blank line after </table>, md4c would treat the next paragraph
+    // as part of the raw HTML block and show its Markdown literally.
+    const QString input = "Term\n: Desc\n\nNext **bold** paragraph.\n";
+    const QString result = MarkdownPreprocessor::convertDefinitionLists(input);
+    QVERIFY(result.contains("</table>\n\nNext **bold** paragraph."));
 }
 
 QTEST_MAIN(MarkdownPreprocessorTest)

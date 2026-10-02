@@ -19,6 +19,7 @@ endfunction()
 
 add_unit_test(DocumentLoaderTest unit/DocumentLoaderTest.cpp)
 add_unit_test(TextDecoderTest unit/TextDecoderTest.cpp)
+add_unit_test(FenceTrackerTest unit/FenceTrackerTest.cpp)
 add_unit_test(MarkdownHtmlRendererTest unit/MarkdownHtmlRendererTest.cpp)
 add_unit_test(MarkdownPreprocessorTest unit/MarkdownPreprocessorTest.cpp)
 add_unit_test(HtmlElementWrapperTest unit/HtmlElementWrapperTest.cpp)
