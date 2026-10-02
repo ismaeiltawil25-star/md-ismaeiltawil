@@ -5,7 +5,10 @@ Renders `.md` files as HTML in tabs using the **md4c** parser (no WebEngine).
 
 ## MVP Capabilities
 
-- Open `.md`, `.markdown`, `.txt` files via File > Open, drag-and-drop, or command line
+- Open Markdown and text files via File > Open, drag-and-drop, or command line:
+  `.md` `.markdown` `.mdown` `.mdwn` `.mkd` `.mkdn` `.mkdown` `.mdtxt` `.mdtext`,
+  dialects `.rmd` `.qmd` `.mdx` `.livemd` `.ronn`, and plain text `.txt` `.text`
+  (the single list is in `src/services/SupportedFileTypes.cpp`)
 - Automatic encoding detection: UTF-8, UTF-16/32 (with or without BOM), legacy
   Windows-1256 (Arabic) and Windows-1252; the status bar says when the encoding was guessed
 - Render GitHub-flavored Markdown with md4c: tables, task lists, ~~strikethrough~~,

@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "app/document/DocumentOpenPipeline.h"
+#include "services/SupportedFileTypes.h"
 #include "app/appearance/ReaderAppearanceController.h"
 #include "app/appearance/ReaderAppearanceDialog.h"
 #include "app/appearance/ReaderStylesheetBuilder.h"
@@ -108,10 +109,7 @@ void MainWindow::openFile()
         this,
         "Open Markdown File(s)",
         QString(),
-        "Supported Files (*.md *.markdown *.txt *.pdf);;"
-        "Markdown / Text Files (*.md *.markdown *.txt);;"
-        "PDF Files (*.pdf);;"
-        "All Files (*)");
+        mdbr::files::openDialogFilter());
 
     if (paths.isEmpty())
         return;
@@ -122,15 +120,12 @@ void MainWindow::openFile()
 
 static bool isSupportedFile(const QString &path)
 {
-    return path.endsWith(".md", Qt::CaseInsensitive)
-        || path.endsWith(".markdown", Qt::CaseInsensitive)
-        || path.endsWith(".txt", Qt::CaseInsensitive)
-        || MainWindow::isPdfFile(path);
+    return mdbr::files::isSupported(path);
 }
 
 bool MainWindow::isPdfFile(const QString &path)
 {
-    return path.endsWith(".pdf", Qt::CaseInsensitive);
+    return mdbr::files::isPdf(path);
 }
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)

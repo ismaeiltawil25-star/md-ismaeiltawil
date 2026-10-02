@@ -20,6 +20,7 @@ endfunction()
 add_unit_test(DocumentLoaderTest unit/DocumentLoaderTest.cpp)
 add_unit_test(TextDecoderTest unit/TextDecoderTest.cpp)
 add_unit_test(FenceTrackerTest unit/FenceTrackerTest.cpp)
+add_unit_test(SupportedFileTypesTest unit/SupportedFileTypesTest.cpp)
 
 # Pipeline tests that load rendered HTML into a QTextDocument (needs Qt Gui).
 # Run headless so they also work on CI agents without a desktop session.
