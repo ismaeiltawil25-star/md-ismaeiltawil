@@ -117,6 +117,7 @@ Test executables (6):
 | RTL after code blocks | Arabic paragraphs after the first code block were not right-to-left |
 | Task-list Unicode escapes | ☐/☑ were garbled on non-MSVC compilers |
 | Strict warnings + MinGW CI job | Compiler-specific bugs and warnings now fail CI |
+| Page view (Settings > Page Layout) | New: print-accurate A4/A5/Letter/Legal pages with margins and gaps, readable in night mode |
 
 The previous test status below is kept for history. For the current
 baseline, see README.md.

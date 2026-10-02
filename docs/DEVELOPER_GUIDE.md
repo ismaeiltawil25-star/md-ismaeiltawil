@@ -46,6 +46,30 @@ of CSS borders, `<s>` instead of `<del>`, and so on. When you add Markdown
 features, check that QTextDocument actually renders the tag.
 `RenderedDocumentContractTest` exists for exactly this.
 
+### Page view (print layout)
+
+Turned on in *Settings → Page Layout...* (off by default). It applies to every
+Markdown/text tab; PDF tabs are already page-based.
+
+| Piece | Responsibility |
+|---|---|
+| `PageLayoutSettings` | On/off, paper (A4, A5, Letter, Legal), margins |
+| `PageGeometry` | mm → px at the screen's logical DPI (A4 at 96 DPI = 794 × 1123 px) |
+| `PageViewPalette` | Desk/border/shadow colours derived from the reader page colour, with a guaranteed minimum contrast, so pages stay visible in night mode |
+| `PageLayoutRepository` | QSettings persistence (group `pageLayout`) |
+| `DocumentTabPage` | Gives the QTextDocument a real page size (Qt then paginates exactly as it prints), draws the desk and the sheets behind the text, and centres the page |
+
+Rules:
+- Gaps are drawn inside the top and bottom margins, so text never overlaps a
+  gap. `kPageGapPx` must stay below twice the smallest margin.
+- QTextEdit resets the page size on resize. `DocumentTabPage` restores it in
+  `resizeEvent`, `showEvent` and `textChanged`. Never set the page size from
+  anywhere else.
+- Zoom changes the text size only; the page stays physically A4, as in a word
+  processor.
+- Tests: `PageLayoutTest` (units), `PageViewRenderingTest` (pagination,
+  pixels in day and night themes), `MainWindowPageViewTest` (the real open path).
+
 ---
 
 ## 2. Folder responsibilities
@@ -58,6 +82,7 @@ features, check that QTextDocument actually renders the tag.
 | `src/renderers/` | Markdown → HTML stages | Qt Widgets |
 | `src/models/` | Plain data structs | anything with behaviour |
 | `src/app/` | Windows, tabs, menus, settings UI | — |
+| `src/app/layout/` | Page view: settings, geometry, palette, persistence, dialog | Markdown pipeline |
 | `src/pdf/`, `src/widgets/` | Custom PDF engine and preview | Markdown pipeline |
 | `src/utils/` | Logging, performance timing | — |
 

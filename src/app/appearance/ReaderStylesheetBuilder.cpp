@@ -113,8 +113,10 @@ QString ReaderStylesheetBuilder::buildDocumentStylesheet(const ReaderAppearanceS
         .arg(s.mutedText);         // %12 em, i color
 }
 
-QString ReaderStylesheetBuilder::buildWidgetStylesheet(const ReaderAppearanceSettings &s)
+QString ReaderStylesheetBuilder::buildWidgetStylesheet(const ReaderAppearanceSettings &s,
+                                                       const QString &backgroundOverride)
 {
+    const QString background = backgroundOverride.isEmpty() ? s.pageBackground : backgroundOverride;
     return QStringLiteral("QTextBrowser { background-color: %1; color: %2; }")
-        .arg(s.pageBackground, s.mainText);
+        .arg(background, s.mainText);
 }

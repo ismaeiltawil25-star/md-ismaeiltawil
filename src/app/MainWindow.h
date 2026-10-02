@@ -5,6 +5,7 @@
 #include <QStringList>
 
 #include "app/document/DocumentTabPage.h"
+#include "app/layout/PageLayoutSettings.h"
 
 class QStackedWidget;
 class QTabWidget;
@@ -29,6 +30,7 @@ private slots:
     void openRecentFile();
     void clearRecentFiles();
     void showReaderAppearanceDialog();
+    void showPageLayoutDialog();
     void onAnchorClicked(const QUrl &url);
 
 protected:
@@ -59,6 +61,7 @@ private:
     QTabWidget *m_tabWidget;
     int m_zoomSteps = 0;
     ReaderAppearanceController *m_appearanceController = nullptr;
+    mdbr::layout::PageLayoutSettings m_pageLayout;
     QStringList m_recentFiles;
     QMenu *m_recentFilesMenu = nullptr;
 };

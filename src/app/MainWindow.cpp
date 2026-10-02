@@ -1,6 +1,9 @@
 #include "MainWindow.h"
 #include "app/document/DocumentOpenPipeline.h"
 #include "services/SupportedFileTypes.h"
+#include "app/layout/PageLayoutDialog.h"
+#include "app/layout/PageLayoutRepository.h"
+#include "app/layout/PageViewPalette.h"
 #include "app/appearance/ReaderAppearanceController.h"
 #include "app/appearance/ReaderAppearanceDialog.h"
 #include "app/appearance/ReaderStylesheetBuilder.h"
@@ -95,6 +98,11 @@ MainWindow::MainWindow(QWidget *parent)
     auto *readerAppearanceAction = settingsMenu->addAction("Reader &Appearance...");
     connect(readerAppearanceAction, &QAction::triggered,
             this, &MainWindow::showReaderAppearanceDialog);
+
+    auto *pageLayoutAction = settingsMenu->addAction("Page &Layout...");
+    connect(pageLayoutAction, &QAction::triggered,
+            this, &MainWindow::showPageLayoutDialog);
+    m_pageLayout = mdbr::layout::PageLayoutRepository::load();
 
     m_appearanceController = new ReaderAppearanceController(this);
     connect(m_appearanceController, &ReaderAppearanceController::appearanceChanged,
@@ -388,7 +396,13 @@ void MainWindow::applyReaderAppearanceToBrowser(DocumentTabPage *tabPage) const
     if (!tabPage)
         return;
     const auto &settings = m_appearanceController->settings();
-    tabPage->setStyleSheet(ReaderStylesheetBuilder::buildWidgetStylesheet(settings));
+    const auto palette = mdbr::layout::PageViewPalette::fromPageBackground(
+        QColor(settings.pageBackground));
+    // In page view the widget background is the "desk" around the pages;
+    // the pages themselves are painted in the reader page colour.
+    tabPage->setStyleSheet(ReaderStylesheetBuilder::buildWidgetStylesheet(
+        settings, m_pageLayout.pageViewEnabled ? palette.desk.name() : QString()));
+    tabPage->setPageView(m_pageLayout, palette);
     tabPage->document()->setDefaultStyleSheet(
         ReaderStylesheetBuilder::buildDocumentStylesheet(settings));
 
@@ -408,10 +422,13 @@ void MainWindow::applyReaderAppearanceToBrowser(DocumentTabPage *tabPage) const
 
         tabPage->setHtml(html);
 
-        if (scrollBar)
-            scrollBar->setValue(scrollPos);
+        // Restore the cursor BEFORE the scroll position: setTextCursor() scrolls
+        // to make the cursor visible, which would otherwise override the saved
+        // position (and, in page view, skip past the first page's top margin).
         cursor.setPosition(cursorPos);
         tabPage->setTextCursor(cursor);
+        if (scrollBar)
+            scrollBar->setValue(scrollPos);
     }
 }
 
@@ -433,6 +450,20 @@ void MainWindow::showReaderAppearanceDialog()
 
     if (dialog.exec() == QDialog::Accepted)
         m_appearanceController->applySettings(dialog.settings());
+}
+
+void MainWindow::showPageLayoutDialog()
+{
+    mdbr::layout::PageLayoutDialog dialog(m_pageLayout, this);
+    if (dialog.exec() != QDialog::Accepted || dialog.settings() == m_pageLayout)
+        return;
+
+    m_pageLayout = dialog.settings();
+    mdbr::layout::PageLayoutRepository::save(m_pageLayout);
+    applyReaderAppearanceToAllBrowsers();
+    statusBar()->showMessage(m_pageLayout.pageViewEnabled
+        ? QString("Page view: %1").arg(mdbr::layout::paperId(m_pageLayout.paper))
+        : QString("Continuous view"), 4000);
 }
 
 void MainWindow::closeTab(int index)

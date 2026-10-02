@@ -14,6 +14,9 @@ Renders `.md` files as HTML in tabs using the **md4c** parser (no WebEngine).
 - Render GitHub-flavored Markdown with md4c: tables, task lists, ~~strikethrough~~,
   automatic links for bare URLs
 - Right-to-left layout for Arabic/Hebrew paragraphs, lists and quotes
+- Optional page view (Settings > Page Layout...): documents are split into
+  printed pages (A4, A5, Letter, Legal) with margins and gaps, like a word
+  processor's print layout. Works in day, night and custom themes
 - Linear-time rendering: a 1 MB document renders in well under a second, and
   deeply nested input cannot freeze the app
 - Automatic YAML front-matter stripping before rendering
