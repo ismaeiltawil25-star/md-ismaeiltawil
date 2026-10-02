@@ -19,11 +19,6 @@ static W mapTokenizerWarning(PdfTokenizerWarning w) {
     return W::TokenizerError;
 }
 
-static bool isFatalTokWarn(W w) {
-    return w == W::UnterminatedString || w == W::MalformedNumber ||
-           w == W::UnexpectedToken || w == W::TokenizerError;
-}
-
 static PdfContentOperand makeOperand(PdfContentOperandType t, qsizetype off, qsizetype len) {
     PdfContentOperand op; op.type = t; op.offset = off; op.length = len; return op;
 }
@@ -92,8 +87,7 @@ PdfContentStreamResult PdfContentStreamTokenizer::parse(QByteArrayView contentSt
         return true;
     };
 
-    using ParseFn = PdfContentOperand(*)(int, ...); // placeholder for self-reference
-    // We'll use lambdas captured by reference
+    // Recursive parsing uses generic lambdas that receive each other by reference.
 
     auto parseDictInner = [&](int depth, auto &parseArr, auto &parseDict, qsizetype startOff) -> PdfContentOperand {
         PdfContentOperand dictOp = makeOperand(PdfContentOperandType::Dictionary, startOff, 0);

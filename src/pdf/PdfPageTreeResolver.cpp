@@ -1,11 +1,6 @@
 #include "PdfPageTreeResolver.h"
 #include <functional>
 
-static bool isStructuralWarning(PdfPageTreeResolverWarning w) {
-    return w >= PdfPageTreeResolverWarning::UnresolvedPageNode
-        && w <= PdfPageTreeResolverWarning::DepthExceeded;
-}
-
 PdfPageTreeResult PdfPageTreeResolver::resolve(const PdfCatalog &catalog,
                                                  const PdfObjectStore &store) {
     PdfPageTreeResult result;
@@ -55,18 +50,14 @@ PdfPageTreeResult PdfPageTreeResolver::resolve(const PdfCatalog &catalog,
     }
 
     // Read /Count internally
-    bool hasCount = false;
-    bool countValid = false;
     int declaredCount = -1;
     PdfPageTreeResolverWarning countWarning = PdfPageTreeResolverWarning::None;
 
     auto countObj = rootDict->get("Count");
     if (countObj) {
-        hasCount = true;
         if (countObj->kind == PdfObjectKind::Integer) {
             int64_t cv = countObj->intValue;
             if (cv >= 0) {
-                countValid = true;
                 declaredCount = static_cast<int>(cv);
             } else {
                 countWarning = PdfPageTreeResolverWarning::InvalidCount;

@@ -47,14 +47,16 @@ PdfPageImageRenderResult PdfSinglePagePreviewController::renderDocumentPage(
 }
 
 void PdfSinglePagePreviewController::applyZoom(double factor) {
-    if (!m_widget) return;
-    double clamped = qBound(PdfSinglePagePreviewWidget::MinZoom,
-                            factor,
-                            PdfSinglePagePreviewWidget::MaxZoom);
-    if (qFuzzyCompare(clamped, m_widget->zoomFactor())) return;
-    m_widget->setZoomFactor(clamped);
-    m_widget->resize(m_widget->sizeHint());
-    emit zoomChanged(m_widget->zoomFactor());
+    // Read the guarded pointer once: QPointer may become null between accesses.
+    PdfSinglePagePreviewWidget *widget = m_widget.data();
+    if (!widget) return;
+    const double clamped = qBound(PdfSinglePagePreviewWidget::MinZoom,
+                                  factor,
+                                  PdfSinglePagePreviewWidget::MaxZoom);
+    if (qFuzzyCompare(clamped, widget->zoomFactor())) return;
+    widget->setZoomFactor(clamped);
+    widget->resize(widget->sizeHint());
+    emit zoomChanged(widget->zoomFactor());
 }
 
 void PdfSinglePagePreviewController::zoomIn() {

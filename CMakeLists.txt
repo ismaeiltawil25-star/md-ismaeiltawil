@@ -114,5 +114,13 @@ add_subdirectory(src/pdf)
 add_subdirectory(src/widgets)
 add_subdirectory(src/services/pdf)
 
+# Strict warnings on all production code (see cmake/CompilerWarnings.cmake).
+include(cmake/CompilerWarnings.cmake)
+foreach(target IN ITEMS
+        md_backpack_core md_backpack_appearance md-backpack-reader
+        pdf_core pdf_rendering pdf_widgets pdf_preview_services)
+    mdbr_enable_warnings(${target})
+endforeach()
+
 enable_testing()
 add_subdirectory(tests)

@@ -32,7 +32,7 @@ QString PdfBasicTextRenderer::decodeTextBytes(const QByteArray &raw, bool &ok, Q
     QString s;
     for (int i = 0; i < raw.size(); ++i) {
         unsigned char b = static_cast<unsigned char>(raw[i]);
-        if ((b >= 0x00 && b <= 0x1F) || (b >= 0x7F && b <= 0x9F))
+        if (b <= 0x1F || (b >= 0x7F && b <= 0x9F))
             s += QChar('?');
         else
             s += QLatin1Char(b);
