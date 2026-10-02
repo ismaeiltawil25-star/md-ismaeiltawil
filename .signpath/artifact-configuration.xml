@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration for MD Backpack Reader.
+  Paste this into SignPath (Project > Artifact configurations) when setting up
+  the project; keep this file in sync with what is configured there.
+
+  The release workflow uploads the portable package folder; GitHub stores it
+  as a ZIP, so the root element is <zip-file>.
+
+  Only the program itself is signed. Upstream binaries (Qt DLLs, compiler
+  runtime) are shipped unsigned by this project, as SignPath Foundation's
+  policy requires. product-name / product-version are enforced on the signed
+  file (SignPath Foundation requirement); the version comes from the workflow.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <zip-file>
+    <pe-file path="md-backpack-reader.exe" product-name="MD Backpack Reader" product-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

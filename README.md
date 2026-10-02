@@ -45,6 +45,41 @@ Renders `.md` files as HTML in tabs using the **md4c** parser (no WebEngine).
   - **Restore Defaults**: resets dialog to the calm palette (only takes effect after Apply/OK)
   - Settings persisted in QSettings across app restarts
 
+## Download
+
+Releases for Windows are published on the
+[Releases page](https://github.com/@GITHUB_USER@/@GITHUB_REPO@/releases).
+Each release is a portable ZIP: extract it anywhere and run
+`md-backpack-reader.exe`. Nothing is installed or changed on the system, except
+the reader's own settings in the registry (see *Uninstall*).
+
+A clean Windows machine may also need the
+[Microsoft Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe).
+
+### Code signing policy
+
+Free code signing provided by SignPath.io, certificate by SignPath Foundation.
+See the full [code signing policy](docs/CODE_SIGNING_POLICY.md) for the team
+roles and the privacy policy.
+
+### Uninstall
+
+- **Portable ZIP:** delete the extracted folder. To also remove the reader's
+  settings (recent files, colours, page layout), delete the registry key
+  `HKEY_CURRENT_USER\Software\MD Backpack Reader`.
+- **Installer:** use *Settings > Apps > Installed apps > MD Backpack Reader >
+  Uninstall*, or the *Uninstall* shortcut in the Start menu.
+
+### Privacy
+
+The reader works offline. It does not collect or send any data. Web links
+open in your browser only when you click them.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Third-party components (Qt under LGPL-3.0, md4c
+under MIT) are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
 ## Build Requirements
 
 - Windows (MSVC 2019/2022)

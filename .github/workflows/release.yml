@@ -1,0 +1,115 @@
+name: Release
+
+# Builds, tests, packages and publishes a Windows release from a version tag.
+#
+#   git tag v0.3.0 && git push origin v0.3.0
+#
+# The tag must match `project(... VERSION x.y.z)` in CMakeLists.txt.
+#
+# Code signing (SignPath Foundation): enabled automatically once these are set
+# in the repository settings (see docs/SIGNPATH_SETUP.md):
+#   Secret   SIGNPATH_API_TOKEN
+#   Variable SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG, SIGNPATH_SIGNING_POLICY_SLUG
+# Until then the release is published unsigned. Every signing request also
+# needs manual approval in SignPath (Code of Conduct requirement).
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # create the GitHub release
+  actions: read     # SignPath reads the uploaded workflow artifact
+
+jobs:
+  release:
+    name: Build, sign and publish
+    runs-on: windows-2022   # GitHub-hosted runner (required by SignPath for OSS)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path CMakeLists.txt -Pattern 'project\(md-backpack-reader VERSION ([0-9.]+)').Matches[0].Groups[1].Value
+          if ("${{ github.ref_type }}" -eq "tag" -and "${{ github.ref_name }}" -ne "v$version") {
+            throw "Tag ${{ github.ref_name }} does not match the CMake project version v$version"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Setup Qt 6.7 (MSVC)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.0'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64'
+
+      - name: Configure
+        run: cmake -B build -S . -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure --timeout 600
+
+      - name: Package
+        shell: pwsh
+        run: ./deployment/windows/package-windows.ps1 -SkipLaunchTest
+
+      # SignPath signs only artifacts stored by a GitHub workflow.
+      - name: Upload unsigned package
+        id: upload-unsigned
+        uses: actions/upload-artifact@v7
+        with:
+          name: md-backpack-reader-${{ steps.version.outputs.version }}-unsigned
+          path: dist/windows/md-backpack-reader/
+          if-no-files-found: error
+
+      - name: Sign with SignPath
+        if: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+          organization-id: '${{ vars.SIGNPATH_ORGANIZATION_ID }}'
+          project-slug: '${{ vars.SIGNPATH_PROJECT_SLUG }}'
+          signing-policy-slug: '${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}'
+          github-artifact-id: '${{ steps.upload-unsigned.outputs.artifact-id }}'
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600   # time for manual approval
+          output-artifact-directory: signed
+          parameters: |
+            version: "${{ steps.version.outputs.version }}"
+
+      - name: Create release archive
+        id: archive
+        shell: pwsh
+        run: |
+          $signed = Test-Path signed/md-backpack-reader.exe
+          $source = if ($signed) { "signed" } else { "dist/windows/md-backpack-reader" }
+          $name = "md-backpack-reader-${{ steps.version.outputs.version }}-windows-portable.zip"
+          Compress-Archive -Path "$source/*" -DestinationPath $name
+          $state = if ($signed) { (Get-AuthenticodeSignature "$source/md-backpack-reader.exe").Status } else { "NotSigned" }
+          Write-Output "Signature status: $state"
+          "zip=$name" >> $env:GITHUB_OUTPUT
+          "signed=$signed" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub release
+        if: ${{ github.ref_type == 'tag' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $note = if ("${{ steps.archive.outputs.signed }}" -eq "True") {
+            "Signed build. Free code signing provided by SignPath.io, certificate by SignPath Foundation."
+          } else {
+            "Unsigned build: Windows SmartScreen / Smart App Control may warn before running it."
+          }
+          gh release create "${{ github.ref_name }}" "${{ steps.archive.outputs.zip }}" `
+            --title "MD Backpack Reader ${{ steps.version.outputs.version }}" `
+            --notes "$note`n`nCode signing policy: https://github.com/${{ github.repository }}/blob/main/docs/CODE_SIGNING_POLICY.md" `
+            --generate-notes

@@ -212,6 +212,11 @@ if ($Toolchain -eq "mingw") {
 & (Join-Path $QtDir "bin\windeployqt.exe") @deployArgs (Join-Path $StageDir $ExeName)
 if ($LASTEXITCODE -ne 0) { throw "windeployqt failed with exit code $LASTEXITCODE" }
 
+# License texts travel with the program (MIT for the app, LGPL notice for Qt).
+foreach ($doc in "LICENSE", "THIRD_PARTY_NOTICES.md") {
+    Copy-Item -LiteralPath (Join-Path $RepoRoot $doc) -Destination $StageDir
+}
+
 # --- 3. MSVC runtime (windeployqt does not copy it by default) ---------------
 if ($Toolchain -eq "msvc") {
     Write-Step "Deploying MSVC runtime DLLs"
@@ -285,6 +290,17 @@ foreach ($file in $required) {
     }
     Write-Output "  OK: $file"
 }
+
+# Product metadata must match the CMake project version: SignPath (and good
+# practice) require every signed binary to carry product name and version.
+$cmakeVersion = (Select-String -LiteralPath (Join-Path $RepoRoot "CMakeLists.txt") `
+    -Pattern 'project\(md-backpack-reader VERSION ([0-9.]+)').Matches[0].Groups[1].Value
+$versionInfo = (Get-Item -LiteralPath (Join-Path $StageDir $ExeName)).VersionInfo
+if ($versionInfo.ProductName -ne "MD Backpack Reader" -or $versionInfo.ProductVersion -ne $cmakeVersion) {
+    throw "Verification failed: $ExeName reports product '$($versionInfo.ProductName)' version '$($versionInfo.ProductVersion)', expected 'MD Backpack Reader' $cmakeVersion. Rebuild after changing the version."
+}
+Write-Output "  OK: product metadata MD Backpack Reader $cmakeVersion"
+
 
 if (-not $SkipLaunchTest) {
     # Launch with a minimal PATH so the test fails if a DLL is missing from the package.

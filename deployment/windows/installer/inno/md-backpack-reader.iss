@@ -2,7 +2,7 @@
 ; Version: 0.2.0
 
 #define MyAppName "MD Backpack Reader"
-#define MyAppVersion "0.2.0"
+#define MyAppVersion "0.3.0"
 #define MyAppPublisher "MD Backpack Reader"
 #define MyAppExeName "md-backpack-reader.exe"
 

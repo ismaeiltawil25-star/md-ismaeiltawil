@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
-project(md-backpack-reader VERSION 0.2.0 LANGUAGES CXX)
+# The single source of truth for the version: the Windows version resource,
+# the packaging script and the release workflow all read it from here.
+project(md-backpack-reader VERSION 0.3.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -163,9 +165,13 @@ add_executable(md-backpack-reader
 )
 
 if(WIN32)
+    # Product name/version embedded in the .exe (Explorer > Properties, code signing).
+    configure_file(${CMAKE_SOURCE_DIR}/deployment/windows/resources/version.rc.in
+                   ${CMAKE_BINARY_DIR}/version.rc @ONLY)
     set_target_properties(md-backpack-reader PROPERTIES WIN32_EXECUTABLE TRUE)
     target_sources(md-backpack-reader PRIVATE
         ${CMAKE_SOURCE_DIR}/deployment/windows/resources/md-backpack-reader.rc
+        ${CMAKE_BINARY_DIR}/version.rc
     )
     if(TARGET Qt6::EntryPoint)
         target_link_libraries(md-backpack-reader PRIVATE Qt6::EntryPoint)
