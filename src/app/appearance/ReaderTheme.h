@@ -38,6 +38,19 @@ enum class ThemeMode
 // colours equal a preset, otherwise Custom.
 [[nodiscard]] ThemeMode modeForLegacyColors(const ReaderAppearanceSettings &storedColors);
 
+// Simple customisation: the user picks only background, text and link colours;
+// the other 9 roles (headings, muted text, code, quotes, rules) are derived
+// from them so the page stays consistent. All inputs are "#RRGGBB".
+[[nodiscard]] ReaderAppearanceSettings deriveCustomPalette(const QString &background,
+                                                           const QString &text,
+                                                           const QString &link);
+
+// WCAG contrast ratio of two "#RRGGBB" colours (1 = identical, 21 = max).
+[[nodiscard]] double colorContrast(const QString &a, const QString &b);
+
+// Body text is comfortably readable (WCAG AA: 4.5 : 1).
+[[nodiscard]] bool hasReadableText(const ReaderAppearanceSettings &palette);
+
 [[nodiscard]] QString themeModeId(ThemeMode mode);  // "system", "day", ...
 [[nodiscard]] ThemeMode themeModeFromId(const QString &id, ThemeMode fallback = ThemeMode::System);
 [[nodiscard]] QString themeModeLabel(ThemeMode mode); // for menus and Preferences

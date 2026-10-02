@@ -2,6 +2,7 @@
 // and the main window's night toggle.
 
 #include <QAction>
+#include <QMenu>
 #include <QCoreApplication>
 #include <QStandardPaths>
 #include <QTabWidget>
@@ -29,6 +30,7 @@ private slots:
     void init();
     void sectionsAreListed();
     void colorEditorOnlyInCustomMode();
+    void customisationStartsSimple();
     void applyCommitsThemeMode();
     void cancelCommitsNothing();
     void pageLayoutApplyReachesCallback();
@@ -71,6 +73,21 @@ void SettingsDialogTest::colorEditorOnlyInCustomMode()
     }
     page.selectMode(ThemeMode::Custom);
     QVERIFY(page.colorEditorEnabled());
+}
+
+void SettingsDialogTest::customisationStartsSimple()
+{
+    ReaderAppearanceController controller;
+    AppearanceSettingsPage page(&controller);
+    page.selectMode(ThemeMode::Custom);
+    QVERIFY(!page.advancedColorsVisible()); // 3 colours only, the other 9 hidden
+
+    page.setBasicColors("#1e1e2e", "#cdd6f4", "#89b4fa");
+    QCOMPARE(page.customColors().pageBackground, QString("#1e1e2e"));
+    QVERIFY(!page.contrastWarningVisible());
+
+    page.setBasicColors("#777777", "#888888", "#0000ff"); // hard to read
+    QVERIFY(page.contrastWarningVisible());
 }
 
 void SettingsDialogTest::applyCommitsThemeMode()
@@ -176,14 +193,37 @@ void SettingsDialogTest::screenshotsForReview()
     ReaderAppearanceController controller;
     controller.setThemeMode(ThemeMode::Night);
     SettingsDialog dialog;
-    dialog.addPage(new AppearanceSettingsPage(&controller));
+    auto *appearancePage = new AppearanceSettingsPage(&controller);
+    dialog.addPage(appearancePage);
     dialog.addPage(new PageLayoutSettingsPage({}, nullptr));
     dialog.show();
     QVERIFY(QTest::qWaitForWindowExposed(&dialog));
     dialog.grab().save(folder + "/preferences-appearance.png");
+    appearancePage->selectMode(ThemeMode::Custom);
+    appearancePage->setBasicColors("#1e1e2e", "#cdd6f4", "#89b4fa");
+    QTest::qWait(50);
+    dialog.grab().save(folder + "/preferences-custom.png");
     dialog.showPage(1);
     QTest::qWait(50);
     dialog.grab().save(folder + "/preferences-page-layout.png");
+
+    // The main window's View > Theme menu with an item highlighted, and the toolbar.
+    MainWindow window;
+    window.resize(700, 300);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    window.grab().save(folder + "/main-toolbar.png");
+    QMenu *themeMenu = nullptr;
+    for (QMenu *menu : window.findChildren<QMenu *>())
+        if (menu->title().contains("Theme"))
+            themeMenu = menu;
+    QVERIFY(themeMenu);
+    themeMenu->popup(window.mapToGlobal(QPoint(40, 40)));
+    QVERIFY(QTest::qWaitForWindowExposed(themeMenu));
+    themeMenu->setActiveAction(themeMenu->actions().at(1));
+    QTest::qWait(50);
+    themeMenu->grab().save(folder + "/theme-menu-hover.png");
+    themeMenu->hide();
 }
 
 QTEST_MAIN(SettingsDialogTest)

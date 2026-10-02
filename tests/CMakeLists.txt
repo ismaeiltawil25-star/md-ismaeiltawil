@@ -148,6 +148,10 @@ target_link_libraries(MainWindowPageViewTest PRIVATE
 add_test(NAME MainWindowPageViewTest COMMAND MainWindowPageViewTest)
 
 # Theme modes (logic, persistence, controller) and the Preferences window.
+add_executable(InteractionStyleTest unit/InteractionStyleTest.cpp)
+target_link_libraries(InteractionStyleTest PRIVATE md_backpack_settings Qt6::Test)
+add_test(NAME InteractionStyleTest COMMAND InteractionStyleTest)
+
 add_executable(ReaderThemeTest unit/ReaderThemeTest.cpp)
 target_link_libraries(ReaderThemeTest PRIVATE md_backpack_appearance Qt6::Test)
 add_test(NAME ReaderThemeTest COMMAND ReaderThemeTest)

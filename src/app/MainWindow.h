@@ -40,6 +40,7 @@ private slots:
     void onAnchorClicked(const QUrl &url);
 
 protected:
+    void changeEvent(QEvent *event) override;
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dropEvent(QDropEvent *event) override;
 
@@ -58,6 +59,7 @@ private:
     mdbr::print::PrintableContent currentPrintableContent() const;
     void applyPageLayout(const mdbr::layout::PageLayoutSettings &settings);
     void setupThemeControls(QMenu *viewMenu, QToolBar *toolBar);
+    void applyInteractionStyle();
     void addToRecentFiles(const QString &absPath);
     void updateRecentFilesMenu();
     QStringList loadRecentFiles() const;
@@ -72,6 +74,7 @@ private:
     ReaderAppearanceController *m_appearanceController = nullptr;
     mdbr::layout::PageLayoutSettings m_pageLayout;
     mdbr::print::PrintController *m_printController = nullptr;
+    QAction *m_nightAction = nullptr;
     QStringList m_recentFiles;
     QMenu *m_recentFilesMenu = nullptr;
 };

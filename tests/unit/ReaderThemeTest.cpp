@@ -39,6 +39,8 @@ private slots:
     void customUsesCustomColors();
     void darkDetection();
     void idsRoundTrip();
+    void threeColorsDeriveTheRest();
+    void contrastCheck();
 
     // persistence and migration
     void freshInstallFollowsWindows();
@@ -95,6 +97,29 @@ void ReaderThemeTest::idsRoundTrip()
     for (const ThemeMode m : {ThemeMode::System, ThemeMode::Day, ThemeMode::Night, ThemeMode::Custom})
         QCOMPARE(themeModeFromId(themeModeId(m)), m);
     QCOMPARE(themeModeFromId("nonsense"), ThemeMode::System);
+}
+
+void ReaderThemeTest::threeColorsDeriveTheRest()
+{
+    const ReaderAppearanceSettings p = deriveCustomPalette("#1e1e2e", "#cdd6f4", "#89b4fa");
+    QCOMPARE(p.pageBackground, QString("#1e1e2e"));
+    QCOMPARE(p.mainText, QString("#cdd6f4"));
+    QCOMPARE(p.linkText, QString("#89b4fa"));
+    // Derived roles sit between background and text, so nothing is invisible.
+    for (const QString &derived : {p.mutedText, p.blockquoteText, p.blockquoteBorder,
+                                   p.horizontalRule, p.codeBlockBackground}) {
+        QVERIFY(derived != p.pageBackground);
+        QVERIFY(derived != p.mainText);
+    }
+    QVERIFY(colorContrast(p.mutedText, p.pageBackground) >= 3.0); // muted, still legible
+}
+
+void ReaderThemeTest::contrastCheck()
+{
+    QVERIFY(hasReadableText(ReaderAppearanceDefaults::nightPalette()));
+    QVERIFY(hasReadableText(ReaderAppearanceDefaults::dayPalette()));
+    QVERIFY(!hasReadableText(deriveCustomPalette("#777777", "#888888", "#0000ff")));
+    QCOMPARE(qRound(colorContrast("#000000", "#ffffff")), 21);
 }
 
 void ReaderThemeTest::freshInstallFollowsWindows()

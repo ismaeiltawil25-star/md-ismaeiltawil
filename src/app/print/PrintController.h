@@ -11,6 +11,7 @@
 #include "PrintableContent.h"
 #include "app/layout/PageLayoutSettings.h"
 
+#include <QColor>
 #include <QObject>
 
 #include <functional>
@@ -36,6 +37,8 @@ public:
 public slots:
     // Enables the actions only when the current tab has something to print.
     void updateActions();
+    // Redraw the toolbar icons in `color` (system light/dark switch).
+    void refreshIcons(const QColor &color);
     void print();
     void preview();
 

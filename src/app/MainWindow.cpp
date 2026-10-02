@@ -11,6 +11,7 @@
 #include "app/settings/PageLayoutSettingsPage.h"
 #include "app/settings/SettingsDialog.h"
 #include "app/settings/ThemeIcons.h"
+#include "app/settings/InteractionStyle.h"
 #include "app/appearance/ReaderStylesheetBuilder.h"
 
 #include <QAction>
@@ -33,6 +34,8 @@
 #include <QActionGroup>
 #include <QGuiApplication>
 #include <QStyleHints>
+#include <QApplication>
+#include <QEvent>
 #include <QUrl>
 #include <QDesktopServices>
 #include <QVBoxLayout>
@@ -136,6 +139,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     setupThemeControls(viewMenu, mainToolBar);
+    applyInteractionStyle();
 
     // All preferences live in one window (Settings > Preferences..., Ctrl+,).
     auto *settingsMenu = menuBar()->addMenu("&Settings");
@@ -517,6 +521,7 @@ void MainWindow::setupThemeControls(QMenu *viewMenu, QToolBar *toolBar)
 
     auto *nightAction = new QAction(mdbr::settings::nightModeIcon(palette().color(QPalette::ButtonText)),
                                     "Night", this);
+    m_nightAction = nightAction;
     nightAction->setObjectName("nightModeAction");
     nightAction->setCheckable(true);
     nightAction->setShortcut(QKeySequence("Ctrl+Shift+N"));
@@ -536,6 +541,29 @@ void MainWindow::setupThemeControls(QMenu *viewMenu, QToolBar *toolBar)
     connect(m_appearanceController, &ReaderAppearanceController::themeModeChanged, this, sync);
     connect(m_appearanceController, &ReaderAppearanceController::appearanceChanged, this, sync);
     sync();
+}
+
+// Hover/checked/selected states with guaranteed contrast (see InteractionStyle),
+// plus toolbar icons in the current text colour. Re-run when Windows switches
+// between light and dark.
+void MainWindow::applyInteractionStyle()
+{
+    const QString sheet = mdbr::settings::interactionStyleSheet(palette());
+    if (qApp->styleSheet() != sheet)
+        qApp->setStyleSheet(sheet);
+
+    const QColor iconColor = palette().color(QPalette::ButtonText);
+    if (m_printController)
+        m_printController->refreshIcons(iconColor);
+    if (m_nightAction)
+        m_nightAction->setIcon(mdbr::settings::nightModeIcon(iconColor));
+}
+
+void MainWindow::changeEvent(QEvent *event)
+{
+    QMainWindow::changeEvent(event);
+    if (event->type() == QEvent::ApplicationPaletteChange || event->type() == QEvent::PaletteChange)
+        applyInteractionStyle();
 }
 
 mdbr::print::PrintableContent MainWindow::currentPrintableContent() const

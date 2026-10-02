@@ -138,6 +138,8 @@ add_library(md_backpack_settings STATIC
     src/app/settings/PageLayoutSettingsPage.h
     src/app/settings/PageLayoutSettingsPage.cpp
     src/app/settings/ThemeIcons.h
+    src/app/settings/InteractionStyle.h
+    src/app/settings/InteractionStyle.cpp
     src/app/settings/ThemeIcons.cpp
 )
 

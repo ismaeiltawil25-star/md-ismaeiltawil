@@ -35,3 +35,50 @@ QIcon nightModeIcon(const QColor &color)
 }
 
 } // namespace mdbr::settings
+
+namespace mdbr::settings {
+
+QIcon themePreviewIcon(const ReaderAppearanceSettings &palette, const ReaderAppearanceSettings *secondHalf)
+{
+    const QSize size(72, 48);
+    QIcon icon;
+    for (const qreal scale : {1.0, 2.0}) {
+        QPixmap pixmap(size * scale);
+        pixmap.setDevicePixelRatio(scale);
+        pixmap.fill(Qt::transparent);
+        QPainter p(&pixmap);
+        p.setRenderHint(QPainter::Antialiasing);
+
+        const QRectF page(1, 1, size.width() - 2, size.height() - 2);
+        const auto drawHalf = [&](const ReaderAppearanceSettings &pal, const QRectF &clip) {
+            p.save();
+            p.setClipRect(clip);
+            p.setPen(QPen(QColor(pal.horizontalRule), 1));
+            p.setBrush(QColor(pal.pageBackground));
+            p.drawRoundedRect(page, 6, 6);
+            QFont font = p.font();
+            font.setPixelSize(17);
+            font.setBold(true);
+            p.setFont(font);
+            p.setPen(QColor(pal.mainText));
+            p.drawText(QRectF(page.left() + 8, page.top() + 4, page.width() - 16, 24),
+                       Qt::AlignLeft | Qt::AlignVCenter, QStringLiteral("Aa"));
+            p.setPen(QPen(QColor(pal.mutedText), 2, Qt::SolidLine, Qt::RoundCap));
+            p.drawLine(QPointF(page.left() + 9, 33), QPointF(page.right() - 9, 33));
+            p.setPen(QPen(QColor(pal.linkText), 2, Qt::SolidLine, Qt::RoundCap));
+            p.drawLine(QPointF(page.left() + 9, 39), QPointF(page.center().x() + 4, 39));
+            p.restore();
+        };
+
+        if (secondHalf) {
+            drawHalf(palette, QRectF(0, 0, size.width() / 2.0, size.height()));
+            drawHalf(*secondHalf, QRectF(size.width() / 2.0, 0, size.width() / 2.0, size.height()));
+        } else {
+            drawHalf(palette, QRectF(QPointF(0, 0), QSizeF(size)));
+        }
+        icon.addPixmap(pixmap);
+    }
+    return icon;
+}
+
+} // namespace mdbr::settings

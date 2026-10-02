@@ -32,6 +32,12 @@ PrintController::PrintController(QWidget *window, ContentProvider content, Setti
     updateActions();
 }
 
+void PrintController::refreshIcons(const QColor &color)
+{
+    m_printAction->setIcon(printIcon(color));
+    m_previewAction->setIcon(printPreviewIcon(color));
+}
+
 void PrintController::updateActions()
 {
     const bool printable = m_content().isPrintable();

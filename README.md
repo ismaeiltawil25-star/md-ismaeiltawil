@@ -40,7 +40,8 @@ Renders `.md` files as HTML in tabs using the **md4c** parser (no WebEngine).
   Custom colors. Toggle night/day from the toolbar moon button or Ctrl+Shift+N, or pick
   a mode in *View > Theme*
 - **Preferences** (*Settings > Preferences...*, Ctrl+,): one window with the
-  *Appearance* section (theme, 12 custom reader colors, live preview) and the
+  *Appearance* section (four theme cards with previews; custom mode needs only
+  background, text and link colors, with *More colors* for all 12 roles) and the
   *Page Layout* section (page view, paper, margins, also used for printing)
 
 ## Download

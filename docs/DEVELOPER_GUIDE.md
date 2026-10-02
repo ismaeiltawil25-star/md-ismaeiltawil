@@ -118,7 +118,13 @@ Reader colours come from exactly one place:
 the current Windows light/dark setting (`QStyleHints::colorScheme`, updated
 live). *View > Theme*, the toolbar Night toggle and Preferences only change the
 mode, so they can never disagree. Settings saved before modes existed are
-migrated from their stored colours (`modeForLegacyColors`). Tests:
+migrated from their stored colours (`modeForLegacyColors`). Custom mode asks for
+three colours and derives the other nine (`deriveCustomPalette`).
+
+Hover, checked and selected states come from `InteractionStyle`, which derives
+them from the system palette and enforces contrast (text >= 4.5:1, state
+visible >= 1.4:1). Do not hard-code hover colours; `InteractionStyleTest`
+checks light and dark palettes. Tests:
 `ReaderThemeTest` and `SettingsDialogTest`.
 
 ### Printing
