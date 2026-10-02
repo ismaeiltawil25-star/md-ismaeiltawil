@@ -247,7 +247,7 @@ Below this line, the horizontal rule should be visually subtle and not confused 
 
 The reader may show a broken image if the file is missing; that is acceptable for path-resolution testing.
 
-![Relative image test](assets/images/sample-cover.png)
+![Relative image test](../../assets/images/sample-cover.png)
 
 ---
 

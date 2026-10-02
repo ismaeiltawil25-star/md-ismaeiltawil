@@ -88,30 +88,22 @@ No manual PATH modification needed. A clean Windows machine may require the
 ```
 src/
   main.cpp                  App entry point
-  app/
-    MainWindow.h/.cpp       Main window (tabs, menus, zoom, DnD, recent files)
-    appearance/
-      ReaderAppearanceSettings.h     12-role color settings struct
-      ReaderAppearanceDefaults.h     Default calm palette
-      ReaderStylesheetBuilder.h/.cpp Generates CSS from settings
-      ReaderAppearanceRepository.h/.cpp QSettings persistence
-      ReaderAppearanceController.h/.cpp State owner + signal bus
-      ReaderAppearanceDialog.h/.cpp  Settings UI dialog
-  models/
-    MarkdownDocument.h       Plain data struct (header-only)
-  services/
-    DocumentLoader.h/.cpp   File I/O with size guard
-    MarkdownPreprocessor.h/.cpp  YAML front-matter stripper
-  renderers/
-    MarkdownHtmlRenderer.h/.cpp  md4c-based HTML renderer
-tests/
-  CMakeLists.txt            Test build config
-  data/                     Test fixtures
-  unit/                     Unit tests (6 executables)
-deployment/windows/
-  package-windows.ps1       windeployqt packaging script
-docs/
-  DEPLOYMENT_WINDOWS.md     Detailed deployment guide
-  MVP_STATUS.md             Current status and known limitations
+  app/                      MainWindow, single-instance service
+    appearance/             Reader colors: settings, CSS builder, persistence, dialog
+    document/               Document open pipeline and tab page/state
+  models/                   Plain data structs (MarkdownDocument)
+  services/                 File loading, Markdown preprocessing
+    pdf/                    PDF file preview service
+  renderers/                md4c HTML renderer + HTML post-processing stages
+  pdf/                      Custom PDF engine (parsing, content streams)
+    rendering/              Page image / text / path rendering
+  widgets/                  PDF preview widget, controller, zoom toolbar
+  utils/                    Error logger, performance monitor
+tests/                      Unit tests, fixtures, diagnostics, manual checks (see tests/README.md)
+assets/                     App icons and images (icons/source/ holds the original icon pack)
+deployment/windows/         Packaging script, installer (Inno Setup), Windows resources
+docs/                       Documentation (see docs/README.md)
 CMakeLists.txt              Root build definition
 ```
+
+Generated folders (ignored by git): `build/`, `dist/`, `Testing/`.

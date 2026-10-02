@@ -153,7 +153,7 @@ Test executables (6):
 18. **No syntax highlighting** — fenced code blocks preserve the language class attribute but no syntax coloring is applied
 19. **Definition-list inline code** is pre-processed manually (backtick→`<code>` in preprocessor), which may behave unexpectedly with nested markdown inside backticks
 20. **Task-list markers are static Unicode** — ☐/☑ cannot be toggled interactively; they are visual-only
-21. **`assets/images/sample-cover.png` is a test fixture** — it is bundled only for the development verification file (`md_backpack_reader_comprehensive_test.md`); it is not a required runtime asset. The dist package does not ship this file.
+21. **`assets/images/sample-cover.png` is a test fixture** — it is bundled only for the development verification file (`tests/manual/comprehensive-visual-test.md`); it is not a required runtime asset. The dist package does not ship this file.
 
 ## Recommended Next Milestones
 
