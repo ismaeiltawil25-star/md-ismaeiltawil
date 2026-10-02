@@ -105,6 +105,22 @@ strikethrough, like GitHub), Mermaid diagrams, and remote `http://` images.
 QTextBrowser loads only local files, and fetching remote images would leak
 the reader's IP address to trackers.
 
+### Settings and themes
+
+All preferences live in one window, `mdbr::settings::SettingsDialog`
+(*Settings > Preferences...*, Ctrl+,). Each section is a `SettingsPage` with
+`title()`, `apply()` and `restoreDefaults()`. To add a section, subclass it and
+add it in `MainWindow::showPreferences()`.
+
+Reader colours come from exactly one place:
+`ReaderAppearanceController::effectiveSettings()`. It combines the theme mode
+(`ReaderTheme`: System, Day, Night or Custom), the user's custom colours and
+the current Windows light/dark setting (`QStyleHints::colorScheme`, updated
+live). *View > Theme*, the toolbar Night toggle and Preferences only change the
+mode, so they can never disagree. Settings saved before modes existed are
+migrated from their stored colours (`modeForLegacyColors`). Tests:
+`ReaderThemeTest` and `SettingsDialogTest`.
+
 ### Printing
 
 *File → Print...* (Ctrl+P), *File → Print Preview...*, and the same two
@@ -147,6 +163,7 @@ local files (scripts, executables) through the operating system.
 | `src/models/` | Plain data structs | anything with behaviour |
 | `src/app/` | Windows, tabs, menus, settings UI | — |
 | `src/app/layout/` | Page view: settings, geometry, palette, persistence, dialog | Markdown pipeline |
+| `src/app/settings/` | Preferences window, its sections, theme icon | Document rendering |
 | `src/app/print/` | Printing and print preview of any tab | Tab/window structure (gets content via callbacks) |
 | `src/pdf/`, `src/widgets/` | Custom PDF engine and preview | Markdown pipeline |
 | `src/utils/` | Logging, performance timing | — |

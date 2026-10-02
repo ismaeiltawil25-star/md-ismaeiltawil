@@ -22,7 +22,7 @@ Renders `.md` files as HTML in tabs using the **md4c** parser (no WebEngine).
 - Clickable links: `#section` scrolls the document, and links to other Markdown files
   open them in a new tab
 - Right-to-left layout for Arabic/Hebrew paragraphs, lists and quotes
-- Optional page view (Settings > Page Layout...): documents are split into
+- Optional page view (Preferences > Page Layout): documents are split into
   printed pages (A4, A5, Letter, Legal) with margins and gaps, like a word
   processor's print layout. Works in day, night and custom themes
 - Linear-time rendering: a 1 MB document renders in well under a second, and
@@ -36,14 +36,12 @@ Renders `.md` files as HTML in tabs using the **md4c** parser (no WebEngine).
 - Status bar with file path and zoom feedback
 - Reader-friendly CSS styling
 - Reader-mode fallback when md4c rendering fails
-- **Reader Appearance Settings**: customize colors via `Settings > Reader Appearance...`
-  - Enable `Use custom reader colors`
-  - Adjust 12 color roles (page background, main text, heading, link, code, blockquote, horizontal rule)
-  - **Apply**: saves immediately and updates all open tabs
-  - **OK**: applies final settings and closes the dialog
-  - **Cancel**: discards unapplied dialog changes (previously Applied settings survive)
-  - **Restore Defaults**: resets dialog to the calm palette (only takes effect after Apply/OK)
-  - Settings persisted in QSettings across app restarts
+- **Themes**: Follow Windows (switches live with Windows light/dark), Day, Night or
+  Custom colors. Toggle night/day from the toolbar moon button or Ctrl+Shift+N, or pick
+  a mode in *View > Theme*
+- **Preferences** (*Settings > Preferences...*, Ctrl+,): one window with the
+  *Appearance* section (theme, 12 custom reader colors, live preview) and the
+  *Page Layout* section (page view, paper, margins, also used for printing)
 
 ## Download
 

@@ -9,6 +9,8 @@
 
 class QStackedWidget;
 class QTabWidget;
+class QToolBar;
+class QMenu;
 class ReaderAppearanceController;
 
 namespace mdbr::print {
@@ -34,8 +36,7 @@ private slots:
     void resetZoom();
     void openRecentFile();
     void clearRecentFiles();
-    void showReaderAppearanceDialog();
-    void showPageLayoutDialog();
+    void showPreferences();
     void onAnchorClicked(const QUrl &url);
 
 protected:
@@ -55,6 +56,8 @@ private:
     void applyReaderAppearanceToBrowser(DocumentTabPage *tabPage) const;
     void applyReaderAppearanceToAllBrowsers();
     mdbr::print::PrintableContent currentPrintableContent() const;
+    void applyPageLayout(const mdbr::layout::PageLayoutSettings &settings);
+    void setupThemeControls(QMenu *viewMenu, QToolBar *toolBar);
     void addToRecentFiles(const QString &absPath);
     void updateRecentFilesMenu();
     QStringList loadRecentFiles() const;

@@ -1,13 +1,16 @@
 #include "MainWindow.h"
 #include "app/document/DocumentOpenPipeline.h"
 #include "services/SupportedFileTypes.h"
-#include "app/layout/PageLayoutDialog.h"
 #include "app/layout/PageLayoutRepository.h"
 #include "app/layout/PageViewPalette.h"
 #include "app/print/PrintController.h"
 #include "app/print/PrintableContent.h"
 #include "app/appearance/ReaderAppearanceController.h"
-#include "app/appearance/ReaderAppearanceDialog.h"
+#include "app/appearance/ReaderTheme.h"
+#include "app/settings/AppearanceSettingsPage.h"
+#include "app/settings/PageLayoutSettingsPage.h"
+#include "app/settings/SettingsDialog.h"
+#include "app/settings/ThemeIcons.h"
 #include "app/appearance/ReaderStylesheetBuilder.h"
 
 #include <QAction>
@@ -27,6 +30,9 @@
 #include <QTextBrowser>
 #include <QTimer>
 #include <QToolBar>
+#include <QActionGroup>
+#include <QGuiApplication>
+#include <QStyleHints>
 #include <QUrl>
 #include <QDesktopServices>
 #include <QVBoxLayout>
@@ -116,20 +122,26 @@ MainWindow::MainWindow(QWidget *parent)
     resetZoomAction->setShortcut(QKeySequence("Ctrl+0"));
     connect(resetZoomAction, &QAction::triggered, this, &MainWindow::resetZoom);
 
-    auto *settingsMenu = menuBar()->addMenu("&Settings");
-
-    auto *readerAppearanceAction = settingsMenu->addAction("Reader &Appearance...");
-    connect(readerAppearanceAction, &QAction::triggered,
-            this, &MainWindow::showReaderAppearanceDialog);
-
-    auto *pageLayoutAction = settingsMenu->addAction("Page &Layout...");
-    connect(pageLayoutAction, &QAction::triggered,
-            this, &MainWindow::showPageLayoutDialog);
     m_pageLayout = mdbr::layout::PageLayoutRepository::load();
 
     m_appearanceController = new ReaderAppearanceController(this);
     connect(m_appearanceController, &ReaderAppearanceController::appearanceChanged,
             this, &MainWindow::applyReaderAppearanceToAllBrowsers);
+
+    // Follow the Windows light/dark setting live ("Follow Windows" theme mode).
+    auto *styleHints = QGuiApplication::styleHints();
+    m_appearanceController->setSystemIsDark(styleHints->colorScheme() == Qt::ColorScheme::Dark);
+    connect(styleHints, &QStyleHints::colorSchemeChanged, this, [this](Qt::ColorScheme scheme) {
+        m_appearanceController->setSystemIsDark(scheme == Qt::ColorScheme::Dark);
+    });
+
+    setupThemeControls(viewMenu, mainToolBar);
+
+    // All preferences live in one window (Settings > Preferences..., Ctrl+,).
+    auto *settingsMenu = menuBar()->addMenu("&Settings");
+    auto *preferencesAction = settingsMenu->addAction("&Preferences...");
+    preferencesAction->setShortcut(QKeySequence("Ctrl+,"));
+    connect(preferencesAction, &QAction::triggered, this, &MainWindow::showPreferences);
 
     statusBar()->showMessage("Ready");
 }
@@ -418,7 +430,7 @@ void MainWindow::applyReaderAppearanceToBrowser(DocumentTabPage *tabPage) const
 {
     if (!tabPage)
         return;
-    const auto &settings = m_appearanceController->settings();
+    const ReaderAppearanceSettings settings = m_appearanceController->effectiveSettings();
     const auto palette = mdbr::layout::PageViewPalette::fromPageBackground(
         QColor(settings.pageBackground));
     // In page view the widget background is the "desk" around the pages;
@@ -464,29 +476,66 @@ void MainWindow::applyReaderAppearanceToAllBrowsers()
     }
 }
 
-void MainWindow::showReaderAppearanceDialog()
+void MainWindow::showPreferences()
 {
-    ReaderAppearanceDialog dialog(m_appearanceController->settings(), this);
-
-    connect(&dialog, &ReaderAppearanceDialog::settingsApplied,
-            m_appearanceController, &ReaderAppearanceController::applySettings);
-
-    if (dialog.exec() == QDialog::Accepted)
-        m_appearanceController->applySettings(dialog.settings());
+    mdbr::settings::SettingsDialog dialog(this);
+    dialog.addPage(new mdbr::settings::AppearanceSettingsPage(m_appearanceController));
+    dialog.addPage(new mdbr::settings::PageLayoutSettingsPage(
+        m_pageLayout, [this](const mdbr::layout::PageLayoutSettings &s) { applyPageLayout(s); }));
+    dialog.exec();
 }
 
-void MainWindow::showPageLayoutDialog()
+void MainWindow::applyPageLayout(const mdbr::layout::PageLayoutSettings &settings)
 {
-    mdbr::layout::PageLayoutDialog dialog(m_pageLayout, this);
-    if (dialog.exec() != QDialog::Accepted || dialog.settings() == m_pageLayout)
+    if (settings == m_pageLayout)
         return;
-
-    m_pageLayout = dialog.settings();
+    m_pageLayout = settings;
     mdbr::layout::PageLayoutRepository::save(m_pageLayout);
     applyReaderAppearanceToAllBrowsers();
     statusBar()->showMessage(m_pageLayout.pageViewEnabled
         ? QString("Page view: %1").arg(mdbr::layout::paperId(m_pageLayout.paper))
         : QString("Continuous view"), 4000);
+}
+
+// View > Theme (radio items) and the toolbar's Night toggle. Both are views of
+// ReaderAppearanceController's theme mode, so they can never disagree.
+void MainWindow::setupThemeControls(QMenu *viewMenu, QToolBar *toolBar)
+{
+    using mdbr::appearance::ThemeMode;
+
+    viewMenu->addSeparator();
+    auto *themeMenu = viewMenu->addMenu("&Theme");
+    auto *group = new QActionGroup(this);
+    for (const ThemeMode mode : {ThemeMode::System, ThemeMode::Day, ThemeMode::Night, ThemeMode::Custom}) {
+        auto *action = themeMenu->addAction(mdbr::appearance::themeModeLabel(mode));
+        action->setCheckable(true);
+        action->setData(static_cast<int>(mode));
+        group->addAction(action);
+        connect(action, &QAction::triggered, this,
+                [this, mode] { m_appearanceController->setThemeMode(mode); });
+    }
+
+    auto *nightAction = new QAction(mdbr::settings::nightModeIcon(palette().color(QPalette::ButtonText)),
+                                    "Night", this);
+    nightAction->setObjectName("nightModeAction");
+    nightAction->setCheckable(true);
+    nightAction->setShortcut(QKeySequence("Ctrl+Shift+N"));
+    nightAction->setToolTip("Switch between night and day reading (Ctrl+Shift+N)");
+    connect(nightAction, &QAction::triggered, this, [this](bool night) {
+        m_appearanceController->setThemeMode(night ? ThemeMode::Night : ThemeMode::Day);
+    });
+    toolBar->addSeparator();
+    toolBar->addAction(nightAction);
+
+    const auto sync = [this, group, nightAction] {
+        const ThemeMode mode = m_appearanceController->themeMode();
+        for (QAction *action : group->actions())
+            action->setChecked(action->data().toInt() == static_cast<int>(mode));
+        nightAction->setChecked(mdbr::appearance::isDarkPalette(m_appearanceController->effectiveSettings()));
+    };
+    connect(m_appearanceController, &ReaderAppearanceController::themeModeChanged, this, sync);
+    connect(m_appearanceController, &ReaderAppearanceController::appearanceChanged, this, sync);
+    sync();
 }
 
 mdbr::print::PrintableContent MainWindow::currentPrintableContent() const

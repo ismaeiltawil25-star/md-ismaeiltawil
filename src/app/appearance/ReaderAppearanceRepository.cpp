@@ -111,3 +111,26 @@ void ReaderAppearanceRepository::clear()
     settings.remove(kGroup);
     settings.sync();
 }
+
+mdbr::appearance::ThemeMode ReaderAppearanceRepository::loadThemeMode()
+{
+    using namespace mdbr::appearance;
+    QSettings settings;
+    settings.beginGroup(kGroup);
+    const QString stored = settings.value(QStringLiteral("themeMode")).toString();
+    const bool hasLegacyColors = settings.contains(kSchemaVer);
+    settings.endGroup();
+
+    if (!stored.isEmpty())
+        return themeModeFromId(stored);
+    return hasLegacyColors ? modeForLegacyColors(load()) : ThemeMode::System;
+}
+
+void ReaderAppearanceRepository::saveThemeMode(mdbr::appearance::ThemeMode mode)
+{
+    QSettings settings;
+    settings.beginGroup(kGroup);
+    settings.setValue(QStringLiteral("themeMode"), mdbr::appearance::themeModeId(mode));
+    settings.endGroup();
+    settings.sync();
+}

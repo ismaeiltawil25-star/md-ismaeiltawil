@@ -90,6 +90,8 @@ target_link_libraries(md_backpack_core
 add_library(md_backpack_appearance STATIC
     src/app/appearance/ReaderAppearanceSettings.h
     src/app/appearance/ReaderAppearanceDefaults.h
+    src/app/appearance/ReaderTheme.h
+    src/app/appearance/ReaderTheme.cpp
     src/app/appearance/ReaderStylesheetBuilder.h
     src/app/appearance/ReaderStylesheetBuilder.cpp
     src/app/appearance/ReaderAppearanceRepository.h
@@ -116,8 +118,6 @@ add_library(md_backpack_layout STATIC
     src/app/layout/PageViewPalette.cpp
     src/app/layout/PageLayoutRepository.h
     src/app/layout/PageLayoutRepository.cpp
-    src/app/layout/PageLayoutDialog.h
-    src/app/layout/PageLayoutDialog.cpp
 )
 
 target_include_directories(md_backpack_layout
@@ -126,6 +126,27 @@ target_include_directories(md_backpack_layout
 
 target_link_libraries(md_backpack_layout
     PUBLIC Qt6::Widgets
+)
+
+# --- Settings UI (Preferences window, theme controls) ---
+add_library(md_backpack_settings STATIC
+    src/app/settings/SettingsPage.h
+    src/app/settings/SettingsDialog.h
+    src/app/settings/SettingsDialog.cpp
+    src/app/settings/AppearanceSettingsPage.h
+    src/app/settings/AppearanceSettingsPage.cpp
+    src/app/settings/PageLayoutSettingsPage.h
+    src/app/settings/PageLayoutSettingsPage.cpp
+    src/app/settings/ThemeIcons.h
+    src/app/settings/ThemeIcons.cpp
+)
+
+target_include_directories(md_backpack_settings
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(md_backpack_settings
+    PUBLIC md_backpack_appearance md_backpack_layout Qt6::Widgets
 )
 
 # --- Printing library (print/preview of any open document) ---
@@ -159,8 +180,6 @@ add_executable(md-backpack-reader
     src/app/document/DocumentOpenPipeline.cpp
     src/app/SingleInstanceService.h
     src/app/SingleInstanceService.cpp
-    src/app/appearance/ReaderAppearanceDialog.h
-    src/app/appearance/ReaderAppearanceDialog.cpp
     ${CMAKE_SOURCE_DIR}/deployment/windows/resources/app-icons.qrc
 )
 
@@ -179,7 +198,7 @@ if(WIN32)
 endif()
 
 target_link_libraries(md-backpack-reader PRIVATE
-    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print
+    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print md_backpack_settings
     pdf_widgets pdf_preview_services
     Qt6::Widgets Qt6::Network
 )
@@ -191,7 +210,7 @@ add_subdirectory(src/services/pdf)
 # Strict warnings on all production code (see cmake/CompilerWarnings.cmake).
 include(cmake/CompilerWarnings.cmake)
 foreach(target IN ITEMS
-        md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print md-backpack-reader
+        md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print md_backpack_settings md-backpack-reader
         pdf_core pdf_rendering pdf_widgets pdf_preview_services)
     mdbr_enable_warnings(${target})
 endforeach()

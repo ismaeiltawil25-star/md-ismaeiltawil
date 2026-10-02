@@ -6,6 +6,7 @@ ReaderAppearanceController::ReaderAppearanceController(QObject *parent)
     : QObject(parent)
 {
     m_settings = ReaderAppearanceRepository::load();
+    m_mode = ReaderAppearanceRepository::loadThemeMode();
 }
 
 void ReaderAppearanceController::load()
@@ -45,4 +46,31 @@ void ReaderAppearanceController::clearStoredSettings()
         m_settings = defaults;
         emit appearanceChanged(m_settings);
     }
+}
+
+ReaderAppearanceSettings ReaderAppearanceController::effectiveSettings() const
+{
+    return mdbr::appearance::resolvePalette(m_mode, m_settings, m_systemDark);
+}
+
+void ReaderAppearanceController::setThemeMode(mdbr::appearance::ThemeMode mode)
+{
+    if (mode == m_mode)
+        return;
+    const ReaderAppearanceSettings before = effectiveSettings();
+    m_mode = mode;
+    ReaderAppearanceRepository::saveThemeMode(mode);
+    emit themeModeChanged(mode);
+    if (effectiveSettings() != before)
+        emit appearanceChanged(effectiveSettings());
+}
+
+void ReaderAppearanceController::setSystemIsDark(bool dark)
+{
+    if (dark == m_systemDark)
+        return;
+    const ReaderAppearanceSettings before = effectiveSettings();
+    m_systemDark = dark;
+    if (effectiveSettings() != before)
+        emit appearanceChanged(effectiveSettings());
 }

@@ -123,11 +123,10 @@ add_executable(MainWindowPdfIntegrationTest
     ${CMAKE_SOURCE_DIR}/src/app/MainWindow.cpp
     ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp
     ${CMAKE_SOURCE_DIR}/src/app/document/DocumentOpenPipeline.cpp
-    ${CMAKE_SOURCE_DIR}/src/app/appearance/ReaderAppearanceDialog.cpp
 )
 target_include_directories(MainWindowPdfIntegrationTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(MainWindowPdfIntegrationTest PRIVATE
-    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print
+    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print md_backpack_settings
     pdf_widgets pdf_preview_services pdf_rendering pdf_core
     Qt6::Widgets Qt6::Test Qt6::Network
 )
@@ -138,27 +137,45 @@ add_executable(MainWindowPageViewTest
     ${CMAKE_SOURCE_DIR}/src/app/MainWindow.cpp
     ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp
     ${CMAKE_SOURCE_DIR}/src/app/document/DocumentOpenPipeline.cpp
-    ${CMAKE_SOURCE_DIR}/src/app/appearance/ReaderAppearanceDialog.cpp
 )
 target_compile_definitions(MainWindowPageViewTest PRIVATE TEST_DATA_DIR="${TEST_DATA_DIR}")
 target_include_directories(MainWindowPageViewTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(MainWindowPageViewTest PRIVATE
-    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print
+    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print md_backpack_settings
     pdf_widgets pdf_preview_services pdf_rendering pdf_core
     Qt6::Widgets Qt6::Test Qt6::Network
 )
 add_test(NAME MainWindowPageViewTest COMMAND MainWindowPageViewTest)
+
+# Theme modes (logic, persistence, controller) and the Preferences window.
+add_executable(ReaderThemeTest unit/ReaderThemeTest.cpp)
+target_link_libraries(ReaderThemeTest PRIVATE md_backpack_appearance Qt6::Test)
+add_test(NAME ReaderThemeTest COMMAND ReaderThemeTest)
+
+add_executable(SettingsDialogTest
+    unit/SettingsDialogTest.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/MainWindow.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/document/DocumentOpenPipeline.cpp
+)
+target_include_directories(SettingsDialogTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(SettingsDialogTest PRIVATE
+    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print md_backpack_settings
+    pdf_widgets pdf_preview_services pdf_rendering pdf_core
+    Qt6::Widgets Qt6::Test Qt6::Network
+)
+add_test(NAME SettingsDialogTest COMMAND SettingsDialogTest)
+set_tests_properties(SettingsDialogTest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 add_executable(MainWindowLinkNavigationTest
     unit/MainWindowLinkNavigationTest.cpp
     ${CMAKE_SOURCE_DIR}/src/app/MainWindow.cpp
     ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp
     ${CMAKE_SOURCE_DIR}/src/app/document/DocumentOpenPipeline.cpp
-    ${CMAKE_SOURCE_DIR}/src/app/appearance/ReaderAppearanceDialog.cpp
 )
 target_include_directories(MainWindowLinkNavigationTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(MainWindowLinkNavigationTest PRIVATE
-    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print
+    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print md_backpack_settings
     pdf_widgets pdf_preview_services pdf_rendering pdf_core
     Qt6::Widgets Qt6::Test Qt6::Network
 )
@@ -190,11 +207,10 @@ add_executable(WidgetDisplayDiagnostic diagnostic/WidgetDisplayDiagnostic.cpp
     ${CMAKE_SOURCE_DIR}/src/app/MainWindow.cpp
     ${CMAKE_SOURCE_DIR}/src/app/document/DocumentTabPage.cpp
     ${CMAKE_SOURCE_DIR}/src/app/document/DocumentOpenPipeline.cpp
-    ${CMAKE_SOURCE_DIR}/src/app/appearance/ReaderAppearanceDialog.cpp
 )
 target_include_directories(WidgetDisplayDiagnostic PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(WidgetDisplayDiagnostic PRIVATE
-    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print
+    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print md_backpack_settings
     pdf_widgets pdf_preview_services pdf_rendering pdf_core
     Qt6::Widgets Qt6::Test Qt6::Network
 )
