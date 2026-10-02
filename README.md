@@ -16,6 +16,9 @@ Renders `.md` files as HTML in tabs using the **md4c** parser (no WebEngine).
 - Extended syntax: footnotes, GitHub alerts (`> [!NOTE]`), math (`$..$`, `$$..$$`),
   `==highlight==`, `^superscript^`, `:emoji:` shortcodes, `[[wiki links]]`,
   heading anchors for `#section` links, and syntax highlighting for 20 languages
+- Printing and print preview for every document (Markdown, text, PDF) from the toolbar
+  or Ctrl+P: same paper, margins and page breaks as page view, dark ink on white paper
+  in any theme, page numbers, page ranges
 - Clickable links: `#section` scrolls the document, and links to other Markdown files
   open them in a new tab
 - Right-to-left layout for Arabic/Hebrew paragraphs, lists and quotes

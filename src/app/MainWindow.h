@@ -11,6 +11,11 @@ class QStackedWidget;
 class QTabWidget;
 class ReaderAppearanceController;
 
+namespace mdbr::print {
+class PrintController;
+struct PrintableContent;
+}
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -49,6 +54,7 @@ private:
     void applyGlobalZoomToAllBrowsers();
     void applyReaderAppearanceToBrowser(DocumentTabPage *tabPage) const;
     void applyReaderAppearanceToAllBrowsers();
+    mdbr::print::PrintableContent currentPrintableContent() const;
     void addToRecentFiles(const QString &absPath);
     void updateRecentFilesMenu();
     QStringList loadRecentFiles() const;
@@ -62,6 +68,7 @@ private:
     int m_zoomSteps = 0;
     ReaderAppearanceController *m_appearanceController = nullptr;
     mdbr::layout::PageLayoutSettings m_pageLayout;
+    mdbr::print::PrintController *m_printController = nullptr;
     QStringList m_recentFiles;
     QMenu *m_recentFilesMenu = nullptr;
 };

@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network PrintSupport)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -126,6 +126,25 @@ target_link_libraries(md_backpack_layout
     PUBLIC Qt6::Widgets
 )
 
+# --- Printing library (print/preview of any open document) ---
+add_library(md_backpack_print STATIC
+    src/app/print/PrintableContent.h
+    src/app/print/DocumentPrinter.h
+    src/app/print/DocumentPrinter.cpp
+    src/app/print/PrintController.h
+    src/app/print/PrintController.cpp
+    src/app/print/PrintIcons.h
+    src/app/print/PrintIcons.cpp
+)
+
+target_include_directories(md_backpack_print
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(md_backpack_print
+    PUBLIC md_backpack_layout md_backpack_appearance pdf_rendering Qt6::Widgets Qt6::PrintSupport
+)
+
 # --- Application executable ---
 add_executable(md-backpack-reader
     src/main.cpp
@@ -154,7 +173,7 @@ if(WIN32)
 endif()
 
 target_link_libraries(md-backpack-reader PRIVATE
-    md_backpack_core md_backpack_appearance md_backpack_layout
+    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print
     pdf_widgets pdf_preview_services
     Qt6::Widgets Qt6::Network
 )
@@ -166,7 +185,7 @@ add_subdirectory(src/services/pdf)
 # Strict warnings on all production code (see cmake/CompilerWarnings.cmake).
 include(cmake/CompilerWarnings.cmake)
 foreach(target IN ITEMS
-        md_backpack_core md_backpack_appearance md_backpack_layout md-backpack-reader
+        md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print md-backpack-reader
         pdf_core pdf_rendering pdf_widgets pdf_preview_services)
     mdbr_enable_warnings(${target})
 endforeach()

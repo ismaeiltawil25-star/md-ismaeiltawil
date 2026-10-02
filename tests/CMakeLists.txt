@@ -55,6 +55,13 @@ target_link_libraries(PageViewRenderingTest PRIVATE
     md_backpack_core md_backpack_appearance md_backpack_layout Qt6::Widgets Qt6::Test
 )
 add_test(NAME PageViewRenderingTest COMMAND PageViewRenderingTest)
+
+# Printing: prints to PDF files and checks the result with the project's PDF engine.
+add_executable(DocumentPrinterTest unit/DocumentPrinterTest.cpp)
+target_compile_definitions(DocumentPrinterTest PRIVATE TEST_DATA_DIR="${TEST_DATA_DIR}")
+target_link_libraries(DocumentPrinterTest PRIVATE md_backpack_print md_backpack_core Qt6::Test)
+add_test(NAME DocumentPrinterTest COMMAND DocumentPrinterTest)
+set_tests_properties(DocumentPrinterTest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 set_tests_properties(PageViewRenderingTest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 add_unit_test(MarkdownHtmlRendererTest unit/MarkdownHtmlRendererTest.cpp)
 add_unit_test(MarkdownPreprocessorTest unit/MarkdownPreprocessorTest.cpp)
@@ -120,7 +127,7 @@ add_executable(MainWindowPdfIntegrationTest
 )
 target_include_directories(MainWindowPdfIntegrationTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(MainWindowPdfIntegrationTest PRIVATE
-    md_backpack_core md_backpack_appearance md_backpack_layout
+    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print
     pdf_widgets pdf_preview_services pdf_rendering pdf_core
     Qt6::Widgets Qt6::Test Qt6::Network
 )
@@ -136,7 +143,7 @@ add_executable(MainWindowPageViewTest
 target_compile_definitions(MainWindowPageViewTest PRIVATE TEST_DATA_DIR="${TEST_DATA_DIR}")
 target_include_directories(MainWindowPageViewTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(MainWindowPageViewTest PRIVATE
-    md_backpack_core md_backpack_appearance md_backpack_layout
+    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print
     pdf_widgets pdf_preview_services pdf_rendering pdf_core
     Qt6::Widgets Qt6::Test Qt6::Network
 )
@@ -151,7 +158,7 @@ add_executable(MainWindowLinkNavigationTest
 )
 target_include_directories(MainWindowLinkNavigationTest PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(MainWindowLinkNavigationTest PRIVATE
-    md_backpack_core md_backpack_appearance md_backpack_layout
+    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print
     pdf_widgets pdf_preview_services pdf_rendering pdf_core
     Qt6::Widgets Qt6::Test Qt6::Network
 )
@@ -187,7 +194,7 @@ add_executable(WidgetDisplayDiagnostic diagnostic/WidgetDisplayDiagnostic.cpp
 )
 target_include_directories(WidgetDisplayDiagnostic PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(WidgetDisplayDiagnostic PRIVATE
-    md_backpack_core md_backpack_appearance md_backpack_layout
+    md_backpack_core md_backpack_appearance md_backpack_layout md_backpack_print
     pdf_widgets pdf_preview_services pdf_rendering pdf_core
     Qt6::Widgets Qt6::Test Qt6::Network
 )

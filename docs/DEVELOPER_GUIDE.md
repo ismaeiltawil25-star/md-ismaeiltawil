@@ -105,6 +105,27 @@ strikethrough, like GitHub), Mermaid diagrams, and remote `http://` images.
 QTextBrowser loads only local files, and fetching remote images would leak
 the reader's IP address to trackers.
 
+### Printing
+
+*File → Print...* (Ctrl+P), *File → Print Preview...*, and the same two
+buttons on the main toolbar, work for every tab type.
+
+| Piece | Responsibility |
+|---|---|
+| `PrintableContent` | What to print (HTML, plain text or a PDF path), built by `MainWindow::currentPrintableContent()` |
+| `DocumentPrinter` | Paper and margins from Page Layout, pagination identical to page view, light print colours, `page / total` footer, page ranges; PDFs are rendered page by page with the PDF engine |
+| `PrintController` | The two actions, Qt's print and preview dialogs, status messages |
+| `PrintIcons` | Toolbar icons drawn with QPainter (no image files, any DPI, palette colour) |
+
+Rules:
+- Draw print pages only through `paintTextPage()`. It sets the ink colour
+  explicitly; `QTextDocument::drawContents()` would use the application palette,
+  which is white text under Windows dark mode (white on white paper).
+- `DocumentPrinter::renderPageImage()` draws a page with the same code as the
+  printer, so tests and previews see exactly what prints.
+- `DocumentPrinterTest` prints to PDF files and reads them back with the
+  project's PDF engine. The same test caught an xref parsing bug in the engine.
+
 ### Links
 
 `MainWindow::onAnchorClicked` handles every link click: web links open in the
@@ -126,6 +147,7 @@ local files (scripts, executables) through the operating system.
 | `src/models/` | Plain data structs | anything with behaviour |
 | `src/app/` | Windows, tabs, menus, settings UI | — |
 | `src/app/layout/` | Page view: settings, geometry, palette, persistence, dialog | Markdown pipeline |
+| `src/app/print/` | Printing and print preview of any tab | Tab/window structure (gets content via callbacks) |
 | `src/pdf/`, `src/widgets/` | Custom PDF engine and preview | Markdown pipeline |
 | `src/utils/` | Logging, performance timing | — |
 

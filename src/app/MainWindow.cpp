@@ -4,6 +4,8 @@
 #include "app/layout/PageLayoutDialog.h"
 #include "app/layout/PageLayoutRepository.h"
 #include "app/layout/PageViewPalette.h"
+#include "app/print/PrintController.h"
+#include "app/print/PrintableContent.h"
 #include "app/appearance/ReaderAppearanceController.h"
 #include "app/appearance/ReaderAppearanceDialog.h"
 #include "app/appearance/ReaderStylesheetBuilder.h"
@@ -24,6 +26,7 @@
 #include <QTabWidget>
 #include <QTextBrowser>
 #include <QTimer>
+#include <QToolBar>
 #include <QUrl>
 #include <QDesktopServices>
 #include <QVBoxLayout>
@@ -73,6 +76,25 @@ MainWindow::MainWindow(QWidget *parent)
     m_recentFilesMenu = fileMenu->addMenu("Recent Files");
     m_recentFiles = loadRecentFiles();
     updateRecentFilesMenu();
+
+    // Printing: File menu + toolbar share the same actions (one source of truth).
+    m_printController = new mdbr::print::PrintController(
+        this,
+        [this] { return currentPrintableContent(); },
+        [this] { return m_pageLayout; });
+    connect(m_printController, &mdbr::print::PrintController::statusMessage,
+            this, [this](const QString &message) { statusBar()->showMessage(message, 5000); });
+
+    fileMenu->addSeparator();
+    fileMenu->addAction(m_printController->printAction());
+    fileMenu->addAction(m_printController->previewAction());
+
+    auto *mainToolBar = addToolBar("Main");
+    mainToolBar->setObjectName("mainToolBar");
+    mainToolBar->setMovable(false);
+    mainToolBar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    mainToolBar->addAction(m_printController->printAction());
+    mainToolBar->addAction(m_printController->previewAction());
 
     fileMenu->addSeparator();
 
@@ -467,6 +489,32 @@ void MainWindow::showPageLayoutDialog()
         : QString("Continuous view"), 4000);
 }
 
+mdbr::print::PrintableContent MainWindow::currentPrintableContent() const
+{
+    using mdbr::print::PrintableContent;
+    PrintableContent content;
+    QWidget *tab = m_tabWidget ? m_tabWidget->currentWidget() : nullptr;
+    if (!tab)
+        return content;
+    content.title = m_tabWidget->tabText(m_tabWidget->currentIndex());
+
+    if (auto *page = qobject_cast<DocumentTabPage *>(tab)) {
+        content.baseUrl = page->document()->baseUrl();
+        if (page->contentMode() == ContentMode::Html) {
+            content.kind = PrintableContent::Kind::Html;
+            content.html = page->originalHtml();
+        } else {
+            content.kind = PrintableContent::Kind::PlainText;
+            content.plainText = page->originalPlainText();
+        }
+    } else if (tab->property("contentType").toString() == QLatin1String("pdf")
+               && tab->property("recentEligible").toBool()) {
+        content.kind = PrintableContent::Kind::Pdf;
+        content.pdfPath = tab->property("absoluteFilePath").toString();
+    }
+    return content;
+}
+
 void MainWindow::closeTab(int index)
 {
     QWidget *page = m_tabWidget->widget(index);
@@ -484,6 +532,8 @@ void MainWindow::closeTab(int index)
 
 void MainWindow::onCurrentTabChanged(int index)
 {
+    if (m_printController)
+        m_printController->updateActions();
     if (index >= 0) {
         updateStatusBarForTab(index);
     } else {

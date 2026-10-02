@@ -119,6 +119,8 @@ Test executables (6):
 | Strict warnings + MinGW CI job | Compiler-specific bugs and warnings now fail CI |
 | Page view (Settings > Page Layout) | New: print-accurate A4/A5/Letter/Legal pages with margins and gaps, readable in night mode |
 | Markdown extensions | Footnotes, alerts, math, highlight, superscript, emoji, wiki links, heading anchors, syntax highlighting: 37/37 features in `MarkdownFeatureCoverageTest` |
+| Printing (toolbar, Ctrl+P, preview) | New: any tab prints; pagination matches page view; never prints white-on-white under Windows dark mode |
+| PDF xref line endings | PDF engine rejected every xref entry ending in SP LF (Qt and many writers), so such PDFs could not open |
 | Link navigation | `#section` and links to local `.md` files work; unsupported local files are never launched |
 
 The previous test status below is kept for history. For the current

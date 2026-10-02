@@ -96,7 +96,13 @@ PdfXRefParserResult PdfXRefParser::parse(PdfByteReader &reader, qsizetype startx
                 return result;
             }
 
+            // ISO 32000-1 §7.5.4: an entry is 20 bytes including a 2-byte EOL,
+            // which may be CR LF, SP LF or SP CR. readLine() strips CR/LF, so the
+            // SP of "SP LF"/"SP CR" remains: drop it. (Qt and many other writers
+            // use SP LF; rejecting it silently skipped every object.)
             auto entryLine = reader.readLine();
+            if (entryLine.size() == 19 && entryLine[18] == ' ')
+                entryLine = entryLine.first(18);
             if (entryLine.size() != 18) {
                 result.warning = PdfXRefParserWarning::MalformedEntry;
                 result.diagnosticMessage = QStringLiteral("XRef entry line must be exactly 18 bytes");

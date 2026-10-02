@@ -22,6 +22,8 @@ private slots:
     void testParseMalformedEntryBadGen();
     void testParseMalformedEntryBadType();
     void testParseMalformedEntryTrailingSpaces();
+    void testParseEntryEolVariants_data();
+    void testParseEntryEolVariants();
     void testParseMalformedEntryShortLine();
     void testParseMalformedEntryLeadingSpace();
     void testParseMalformedEntryBlankLine();
@@ -198,6 +200,29 @@ void PdfXRefParserTest::testParseMalformedEntryTrailingSpaces() {
     PdfXRefParser parser;
     auto result = parser.parse(reader, 0);
     QCOMPARE(result.warning, PdfXRefParserWarning::MalformedEntry);
+}
+
+// ISO 32000-1 7.5.4 allows three 2-byte end-of-line markers for xref entries.
+// Qt's PDF writer (and many others) use "SP LF"; it used to drop every entry.
+void PdfXRefParserTest::testParseEntryEolVariants_data() {
+    QTest::addColumn<QByteArray>("eol");
+    QTest::newRow("CR LF") << QByteArray("\r\n");
+    QTest::newRow("SP LF") << QByteArray(" \n");
+    QTest::newRow("SP CR") << QByteArray(" \r");
+}
+
+void PdfXRefParserTest::testParseEntryEolVariants() {
+    QFETCH(QByteArray, eol);
+    const QByteArray data = "xref\n0 2\n0000000000 65535 f" + eol + "0000000129 00000 n" + eol + "trailer\n";
+    PdfByteReader reader(data);
+    PdfXRefParser parser;
+    auto result = parser.parse(reader, 0);
+    QVERIFY(result.ok());
+    QCOMPARE(result.table.subsections.size(), 1);
+    QCOMPARE(result.table.subsections[0].entries.size(), 2);
+    QCOMPARE(result.table.subsections[0].entries[1].objNum, 1);
+    QCOMPARE(result.table.subsections[0].entries[1].offset, qsizetype(129));
+    QCOMPARE(result.table.subsections[0].entries[1].type, PdfXRefEntryType::InUse);
 }
 
 void PdfXRefParserTest::testParseMalformedEntryShortLine() {
