@@ -2,12 +2,15 @@ name: Build & Test
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master, develop, 'feat/**', 'fix/**' ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
-  build-and-test:
+  # Release toolchain: the configuration that ships to users.
+  msvc:
+    name: MSVC (release toolchain)
     runs-on: windows-2022
 
     steps:
@@ -26,7 +29,44 @@ jobs:
         run: cmake -B build -S . -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}"
 
       - name: Build
-        run: cmake --build build --config Release
+        run: cmake --build build --config Release --parallel
 
       - name: Run Tests
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: ctest --test-dir build -C Release --output-on-failure --timeout 600
+
+  # Strict gate: GCC with every warning promoted to an error.
+  # Catches portability bugs that MSVC accepts silently.
+  mingw-strict:
+    name: MinGW (warnings as errors)
+    runs-on: windows-2022
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Qt 6.7 + MinGW 11.2
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.0'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_mingw'
+          tools: 'tools_mingw90,qt.tools.win64_mingw900'
+
+      - name: Put MinGW first on PATH
+        shell: pwsh
+        run: Add-Content $env:GITHUB_PATH "$env:IQTA_TOOLS\mingw1120_64\bin"
+
+      - name: Configure CMake
+        run: >
+          cmake -B build -S . -G "MinGW Makefiles"
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}"
+          -DMDBR_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run Tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ctest --test-dir build --output-on-failure --timeout 600

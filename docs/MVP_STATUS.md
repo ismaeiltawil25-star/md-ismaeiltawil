@@ -103,6 +103,24 @@ Test executables (6):
   - Settings persisted in QSettings across app restarts
   - Updates all open tabs immediately on Apply/OK
 
+## Rendering Robustness (2026-10-02, branch `feat/rendering-robustness`)
+
+| Change | Problem it fixes |
+|---|---|
+| Encoding detection (`services/text/TextDecoder`) | Windows-1256 Arabic and UTF-16 files showed as unreadable symbols |
+| YAML-aware front matter (`FrontMatterStripper`) | A document starting with `---` silently lost everything up to the next `---` |
+| CommonMark fence tracking (`FenceTracker`) | Definition-list conversion rewrote code inside `~~~` and indented fences |
+| GitHub dialect in md4c | `~~strikethrough~~` and bare URLs were shown literally |
+| Nested `<div>` conversion | Content after an inner `</div>` escaped its block |
+| Linear-time RTL stages | Deeply nested quotes froze the app (>5 min); many Arabic quotes took 14 s |
+| Table-nesting caps (quotes 5, divs 3) | Qt layout is exponential in table depth: 20 nested quotes made the shipped app "Not Responding" |
+| RTL after code blocks | Arabic paragraphs after the first code block were not right-to-left |
+| Task-list Unicode escapes | ☐/☑ were garbled on non-MSVC compilers |
+| Strict warnings + MinGW CI job | Compiler-specific bugs and warnings now fail CI |
+
+The previous test status below is kept for history. For the current
+baseline, see README.md.
+
 ## Test Status
 
 - **CTest executables**: 11
@@ -143,7 +161,7 @@ Test executables (6):
 8. **Microsoft Visual C++ Redistributable may be required** on clean Windows machines
 9. **Zoom does not persist** between app launches
 10. **Single-window only** — no support for multiple independent windows
-11. **No custom Markdown syntax extensions** — md4c output is used as-is
+11. **Not supported:** footnotes, math, syntax highlighting, Mermaid, remote images. See the roadmap in DEVELOPER_GUIDE.md section 6
 12. **Max file size (10 MB)** is a compile-time constant — no user-facing settings UI for this value
 13. **Wide tables overflow** — QTextDocument does not support horizontal scrolling or table auto-wrapping; very wide tables may be clipped
 14. **`<details>` non-interactive** — QTextDocument cannot toggle disclosure widgets; `<details>` content is always visible

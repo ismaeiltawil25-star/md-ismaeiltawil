@@ -6,7 +6,13 @@ Renders `.md` files as HTML in tabs using the **md4c** parser (no WebEngine).
 ## MVP Capabilities
 
 - Open `.md`, `.markdown`, `.txt` files via File > Open, drag-and-drop, or command line
-- Render Markdown to HTML with md4c
+- Automatic encoding detection: UTF-8, UTF-16/32 (with or without BOM), legacy
+  Windows-1256 (Arabic) and Windows-1252; the status bar says when the encoding was guessed
+- Render GitHub-flavored Markdown with md4c: tables, task lists, ~~strikethrough~~,
+  automatic links for bare URLs
+- Right-to-left layout for Arabic/Hebrew paragraphs, lists and quotes
+- Linear-time rendering: a 1 MB document renders in well under a second, and
+  deeply nested input cannot freeze the app
 - Automatic YAML front-matter stripping before rendering
 - Multi-tab interface with closeable tabs
 - Duplicate-tab prevention (re-focuses existing tab)
@@ -63,7 +69,11 @@ Get-ChildItem ".\build\tests\Release\*Test.exe" | ForEach-Object {
 }
 ```
 
-Latest verified local baseline: 11 test executables, 148 QtTest reported passes, 0 failures, 0 skipped.
+Latest verified baseline (2026-10-02, MinGW 11.2 with warnings as errors):
+54 test executables, about 1,100 QtTest checks, 0 failures.
+
+For the strict build, the test layers and the coding rules, see
+[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Windows Portable Package
 
@@ -92,7 +102,9 @@ src/
     appearance/             Reader colors: settings, CSS builder, persistence, dialog
     document/               Document open pipeline and tab page/state
   models/                   Plain data structs (MarkdownDocument)
-  services/                 File loading, Markdown preprocessing
+  services/                 File loading, Markdown preprocessing facade
+    text/                   Encoding detection and decoding
+    markdown/               Front matter, definition lists, code-fence tracking
     pdf/                    PDF file preview service
   renderers/                md4c HTML renderer + HTML post-processing stages
   pdf/                      Custom PDF engine (parsing, content streams)
@@ -103,7 +115,9 @@ tests/                      Unit tests, fixtures, diagnostics, manual checks (se
 assets/                     App icons and images (icons/source/ holds the original icon pack)
 deployment/windows/         Packaging script, installer (Inno Setup), Windows resources
 docs/                       Documentation (see docs/README.md)
+cmake/                      Shared CMake modules (compiler warnings)
 CMakeLists.txt              Root build definition
+CONTRIBUTING.md             Workflow and definition of done
 ```
 
 Generated folders (ignored by git): `build/`, `dist/`, `Testing/`.

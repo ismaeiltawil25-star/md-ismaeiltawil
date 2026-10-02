@@ -2,6 +2,7 @@
 
 | File | Purpose |
 |---|---|
+| [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | **Start here:** pipeline, folders, coding rules, test layers, build |
 | [VISION.md](VISION.md) | Product vision and long-term goals (Arabic) |
 | [MVP_STATUS.md](MVP_STATUS.md) | Completed milestones and known limitations |
 | [BASELINE.md](BASELINE.md) | Latest validated baseline (Packaged PDF Preview MVP) |
