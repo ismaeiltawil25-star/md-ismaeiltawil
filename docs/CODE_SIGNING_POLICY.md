@@ -18,8 +18,8 @@ Company's signature.
 
 | Role | Members |
 |---|---|
-| Committers and reviewers | [Ismaeil Tawil](https://github.com/@GITHUB_USER@) |
-| Approvers | [Ismaeil Tawil](https://github.com/@GITHUB_USER@) |
+| Committers and reviewers | [Ismaeil Tawil](https://github.com/ismaeiltawil25-star) |
+| Approvers | [Ismaeil Tawil](https://github.com/ismaeiltawil25-star) |
 
 - **Committers** may change the source code without additional review.
 - **Reviewers**: every change proposed by anyone else (pull requests) is

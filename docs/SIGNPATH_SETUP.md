@@ -8,10 +8,9 @@ uninstall sections in README, `.github/workflows/release.yml`, and
 Steps only the owner can do:
 
 1. Enable two-factor authentication on GitHub.
-2. Create a **public** GitHub repository (e.g. `md-backpack-reader`) and push
-   this project to it, with the default branch `main`.
-3. Replace `@GITHUB_USER@` / `@GITHUB_REPO@` in `README.md` and
-   `docs/CODE_SIGNING_POLICY.md` with the real names.
+2. Done: public repository https://github.com/ismaeiltawil25-star/md-ismaeiltawil
+   (default branch `main`).
+3. Done: README and `docs/CODE_SIGNING_POLICY.md` link to it.
 4. Publish a first (unsigned) release: `git tag v0.3.0 && git push origin v0.3.0`.
    SignPath requires the project to be released already.
 5. Apply at <https://signpath.org/apply>. Suggested answers:

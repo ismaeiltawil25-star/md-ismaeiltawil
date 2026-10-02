@@ -48,7 +48,7 @@ Renders `.md` files as HTML in tabs using the **md4c** parser (no WebEngine).
 ## Download
 
 Releases for Windows are published on the
-[Releases page](https://github.com/@GITHUB_USER@/@GITHUB_REPO@/releases).
+[Releases page](https://github.com/ismaeiltawil25-star/md-ismaeiltawil/releases).
 Each release is a portable ZIP: extract it anywhere and run
 `md-backpack-reader.exe`. Nothing is installed or changed on the system, except
 the reader's own settings in the registry (see *Uninstall*).
