@@ -20,6 +20,17 @@ endfunction()
 add_unit_test(DocumentLoaderTest unit/DocumentLoaderTest.cpp)
 add_unit_test(TextDecoderTest unit/TextDecoderTest.cpp)
 add_unit_test(FenceTrackerTest unit/FenceTrackerTest.cpp)
+
+# Pipeline tests that load rendered HTML into a QTextDocument (needs Qt Gui).
+# Run headless so they also work on CI agents without a desktop session.
+function(add_render_test name source)
+    add_unit_test(${name} ${source})
+    target_link_libraries(${name} PRIVATE Qt6::Gui)
+    set_tests_properties(${name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endfunction()
+
+add_render_test(RenderedDocumentContractTest unit/RenderedDocumentContractTest.cpp)
+add_render_test(RenderRobustnessTest unit/RenderRobustnessTest.cpp)
 add_unit_test(MarkdownHtmlRendererTest unit/MarkdownHtmlRendererTest.cpp)
 add_unit_test(MarkdownPreprocessorTest unit/MarkdownPreprocessorTest.cpp)
 add_unit_test(HtmlElementWrapperTest unit/HtmlElementWrapperTest.cpp)

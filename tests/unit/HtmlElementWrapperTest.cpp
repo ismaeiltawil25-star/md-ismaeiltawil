@@ -10,6 +10,8 @@ private slots:
     void testBlockquoteWrapping();
     void testNoCodeBlockNoWrap();
     void testNoBlockquoteNoWrap();
+    void testRtlSwapMovesBarAfterWholeCell();
+    void testLtrQuoteIsNotSwapped();
 };
 
 void HtmlElementWrapperTest::testCodeBlockWrapping()
@@ -45,6 +47,29 @@ void HtmlElementWrapperTest::testNoBlockquoteNoWrap()
     QString result = HtmlElementWrapper::wrapBlockquotes(input);
     QVERIFY2(!result.contains("blockquote-table"), "no blockquote-table for plain text");
     QCOMPARE(result, input);
+}
+
+void HtmlElementWrapperTest::testRtlSwapMovesBarAfterWholeCell()
+{
+    const QString bar = "<td class=\"blockquote-bar\" width=\"4\"></td>";
+    // RTL quote whose content contains a nested table (e.g. a code block).
+    const QString input =
+        "<table class=\"blockquote-table\"><tr>" + bar +
+        "<td class=\"blockquote-cell\" width=\"100%\" dir=\"rtl\" align=\"right\">"
+        "<table><tr><td class=\"code-block-cell\">code</td></tr></table>"
+        "</td></tr></table>";
+    const QString expected =
+        "<table class=\"blockquote-table\"><tr>"
+        "<td class=\"blockquote-cell\" width=\"100%\" dir=\"rtl\" align=\"right\">"
+        "<table><tr><td class=\"code-block-cell\">code</td></tr></table>"
+        "</td>" + bar + "</tr></table>";
+    QCOMPARE(HtmlElementWrapper::swapBlockquoteOrderForRtl(input), expected);
+}
+
+void HtmlElementWrapperTest::testLtrQuoteIsNotSwapped()
+{
+    const QString input = HtmlElementWrapper::wrapBlockquotes("<blockquote><p>text</p></blockquote>");
+    QCOMPARE(HtmlElementWrapper::swapBlockquoteOrderForRtl(input), input);
 }
 
 QTEST_MAIN(HtmlElementWrapperTest)

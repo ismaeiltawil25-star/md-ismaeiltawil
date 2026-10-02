@@ -23,7 +23,9 @@ MarkdownHtmlRenderer::Result MarkdownHtmlRenderer::render(const QString &markdow
 
     const QByteArray utf8 = markdown.toUtf8();
 
-    unsigned mdFlags = MD_FLAG_COLLAPSEWHITESPACE | MD_FLAG_TABLES | MD_FLAG_TASKLISTS;
+    // GitHub-flavored Markdown: tables, task lists, ~~strikethrough~~ and bare
+    // URL / www. / e-mail autolinks.
+    constexpr unsigned mdFlags = MD_DIALECT_GITHUB | MD_FLAG_COLLAPSEWHITESPACE;
     unsigned htmlFlags = MD_HTML_FLAG_SKIP_UTF8_BOM;
 
     QElapsedTimer stageTimer;

@@ -1,5 +1,7 @@
 #include "HtmlElementWrapper.h"
 
+#include <vector>
+
 // Wrap each fenced code block (<pre><code...>...</code></pre>) in a table+cell
 QString HtmlElementWrapper::wrapCodeBlocks(const QString &html)
 {
@@ -82,56 +84,66 @@ QString HtmlElementWrapper::wrapBlockquotes(const QString &html)
 
 // Swap bar and cell order inside blockquote-tables that contain RTL content.
 // For RTL, the content cell must appear first so the bar renders on the right.
+//
+// Single linear pass. When a bar cell is immediately followed by a blockquote
+// cell that the RTL stage marked dir="rtl", the bar is dropped there and
+// re-emitted right after that cell's matching </td> (tracked with a stack, so
+// nested tables inside the quote — code blocks, nested quotes — are handled).
 QString HtmlElementWrapper::swapBlockquoteOrderForRtl(const QString &html)
 {
-    QString result = html;
-    int searchPos = 0;
+    static const QString barCell = QStringLiteral(
+        "<td class=\"blockquote-bar\" width=\"4\"></td>");
+    static const QString contentCellPrefix = QStringLiteral("<td class=\"blockquote-cell\"");
+    static const QString rtlMarker = QStringLiteral("dir=\"rtl\"");
 
-    while (true) {
-        int tableStart = result.indexOf(QStringLiteral("<table class=\"blockquote-table\""), searchPos);
-        if (tableStart < 0) break;
+    const QStringView view(html);
+    QString out;
+    out.reserve(html.size());
 
-        int closeTable = result.indexOf(QStringLiteral("</table>"), tableStart);
-        if (closeTable < 0) break;
-        closeTable += 8;
+    // One entry per open <td>: true when the bar must be emitted after its </td>.
+    std::vector<bool> openCells;
+    bool barPending = false;
+    qsizetype pos = 0;
 
-        int trStart = result.indexOf(QStringLiteral("<tr>"), tableStart);
-        int trEnd = result.indexOf(QStringLiteral("</tr>"), trStart);
-        if (trStart < 0 || trEnd < 0 || trEnd > closeTable) {
-            searchPos = closeTable;
-            continue;
+    while (pos < view.size()) {
+        const qsizetype lt = view.indexOf(u'<', pos);
+        if (lt < 0) {
+            out += view.sliced(pos);
+            break;
+        }
+        out += view.sliced(pos, lt - pos);
+
+        const QStringView rest = view.sliced(lt);
+        if (rest.startsWith(barCell)) {
+            const QStringView next = rest.sliced(barCell.size());
+            const qsizetype nextEnd = next.indexOf(u'>');
+            if (next.startsWith(contentCellPrefix) && nextEnd >= 0
+                && next.first(nextEnd).contains(rtlMarker)) {
+                barPending = true; // drop the bar here, re-emit after the cell
+                pos = lt + barCell.size();
+                continue;
+            }
         }
 
-        QString tableInner = result.mid(trStart, trEnd - trStart + 5);
-        if (!tableInner.contains(QStringLiteral("dir=\"rtl\""))) {
-            searchPos = closeTable;
-            continue;
+        const qsizetype gt = view.indexOf(u'>', lt);
+        if (gt < 0) {
+            out += rest;
+            break;
         }
+        const QStringView tag = view.sliced(lt, gt - lt + 1);
+        out += tag;
+        pos = gt + 1;
 
-        int barStart = result.indexOf(QStringLiteral("<td class=\"blockquote-bar\""), trStart);
-        int barEnd = result.indexOf(QStringLiteral("</td>"), barStart);
-        if (barStart < 0 || barEnd < 0 || barEnd > trEnd) {
-            searchPos = closeTable;
-            continue;
+        if (tag.startsWith(u"<td") && (tag.size() == 4 || tag[3] == u' ')) {
+            openCells.push_back(barPending);
+            barPending = false;
+        } else if (tag == u"</td>" && !openCells.empty()) {
+            const bool emitBar = openCells.back();
+            openCells.pop_back();
+            if (emitBar)
+                out += barCell;
         }
-        barEnd += 5;
-
-        int cellStart = result.indexOf(QStringLiteral("<td class=\"blockquote-cell\""), trStart);
-        int cellEnd = result.indexOf(QStringLiteral("</td>"), cellStart);
-        if (cellStart < 0 || cellEnd < 0 || cellEnd > trEnd) {
-            searchPos = closeTable;
-            continue;
-        }
-        cellEnd += 5;
-
-        QString barSnippet = result.mid(barStart, barEnd - barStart);
-        QString cellSnippet = result.mid(cellStart, cellEnd - cellStart);
-
-        result.replace(cellStart, cellEnd - cellStart, barSnippet);
-        result.replace(barStart, barEnd - barStart, cellSnippet);
-
-        searchPos = barStart + cellSnippet.size() + 1;
     }
 
-    return result;
+    return out;
 }

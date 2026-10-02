@@ -11,6 +11,8 @@ private slots:
     void testSummaryToParagraph();
     void testDetailsStripped();
     void testDivToTable();
+    void testNestedDivsStayBalanced();
+    void testDelBecomesStrikeout();
     void testSubSupPreserved();
     void testKbdWithAttribute();
     void testMarkWithAttribute();
@@ -56,6 +58,24 @@ void HtmlNormalizerTest::testDivToTable()
     QVERIFY2(result.contains("html-block-table"), "div must become html-block-table");
     QVERIFY2(result.contains("html-block-cell"), "div must become html-block-cell");
     QVERIFY2(result.contains("Content"), "div content must be preserved");
+}
+
+void HtmlNormalizerTest::testNestedDivsStayBalanced()
+{
+    const QString input = "<div>outer <div>inner</div> after-inner</div>tail";
+    const QString result = HtmlNormalizer::normalizeRawTags(input);
+
+    QCOMPARE(result.count("<table class=\"html-block-table\""), 2);
+    QCOMPARE(result.count("</table>"), 2);
+    // "after-inner" must still be inside the outer block, i.e. before the last </table>.
+    QVERIFY(result.indexOf("after-inner") < result.lastIndexOf("</table>"));
+    QVERIFY(result.endsWith("</td></tr></table>tail"));
+}
+
+void HtmlNormalizerTest::testDelBecomesStrikeout()
+{
+    const QString result = HtmlNormalizer::normalizeRawTags("<p><del>gone</del></p>");
+    QCOMPARE(result, QString("<p><s>gone</s></p>"));
 }
 
 void HtmlNormalizerTest::testSubSupPreserved()
